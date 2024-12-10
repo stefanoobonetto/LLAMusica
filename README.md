@@ -6,10 +6,6 @@ Llamusica is an intelligent and interactive chatbot powered by Spotify APIs and 
 
 ---
 
-![Llamusica Banner](https://via.placeholder.com/1200x300.png?text=Llamusica+Spotify+Chatbot)  
-
----
-
 ## 🌟 **Key Features**
 
 - 🎶 **Song Search:**  
@@ -32,11 +28,8 @@ Llamusica is an intelligent and interactive chatbot powered by Spotify APIs and 
 
 ---
 
-![Key Features](https://via.placeholder.com/800x200.png?text=Key+Features)  
-
----
-
 ## 🎯 **Objective**  
+
 To create a seamless and engaging user experience for music lovers by combining the power of Spotify's API with a conversational AI interface. This chatbot aims to simplify music exploration, assist in creating personalized playlists, and help users connect more deeply with their favorite artists and genres.  
 
 ---
@@ -53,11 +46,7 @@ To create a seamless and engaging user experience for music lovers by combining 
 
 🎉 **Engaging Experience:** Interactive, conversational, and fun.  
 ⚡ **Powerful Features:** Packed with advanced music discovery tools.  
-🌍 **Accessible Anywhere:** Fully cross-platform for web and mobile.
-
----
-
-![Why Llamusica](https://via.placeholder.com/800x200.png?text=Why+Choose+Llamusica)
+🌍 **Accessible Anywhere:** Fully cross-platform for web and mobile.  
 
 ---
 
@@ -70,3 +59,20 @@ To create a seamless and engaging user experience for music lovers by combining 
 - **Flutter** for mobile applications  
 
 ---
+
+## 📸 **Preview**
+
+> **Screenshot or demo preview placeholder:** Add a GIF or an image showing the chatbot interface interacting with a user.
+
+---
+
+## 🎤 **Get Started**  
+
+Clone the repository and start exploring Llamusica:  
+
+```bash
+git clone https://github.com/your-repo/llamusica.git
+cd llamusica
+npm install
+npm start
+```

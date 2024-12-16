@@ -8,38 +8,6 @@ CLIENT_SECRET = os.getenv('SPOTIPY_CLIENT_SECRET')
 SPOTIPY_REDIRECT_URI = 'http://localhost:8080'  
 SCOPE = 'playlist-modify-public user-top-read'
 
-sp = None
-
-from spotipy.oauth2 import SpotifyOAuth
-
-def clear_cache():
-    """Clear all Spotify cache files."""
-    for cache_file in glob.glob(".cache*"):
-        os.remove(cache_file)
-        print(f"Removed cache file: {cache_file}")
-
-def authenticate(force_auth=False):
-    """
-    Authenticate the user with Spotify and return a Spotipy client instance.
-    Deletes any existing cache to ensure a fresh login if `force_auth` is True.
-    """
-    if force_auth:
-        clear_cache()
-
-    print("Please log in to your Spotify account...")
-    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-        client_id=CLIENT_ID,
-        client_secret=CLIENT_SECRET,
-        redirect_uri=SPOTIPY_REDIRECT_URI,
-        scope=SCOPE,
-        show_dialog=True  # Forces the login dialog for the current user
-    ))
-
-    print("Authentication successful!")
-    return sp
-
-
-# Define the classes for storing information
 class Artist:
     def __init__(self, id, name, genres, followers, popularity, spotify_url, images):
         self.id = id
@@ -108,6 +76,92 @@ class Album:
             f"  Spotify URL: {self.spotify_url}"
             # f"  Images: {self.images}"
         )
+        
+def get_recommendations(artists=None, songs=None, genres=None, limit=10):
+    """
+    Fetch recommendations from Spotify based on provided artists, songs, or genres.
+    :param artists: List of artist names (strings)
+    :param songs: List of song names (strings)
+    :param genres: List of genres (strings)
+    :param limit: Number of recommendations to fetch
+    :return: List of Song instances
+    """
+    seed_artists = []
+    seed_tracks = []
+    seed_genres = []
+    
+    # Validate and extract Spotify IDs for seeds
+    if artists:
+        for artist_name in artists:
+            artist = search_artist(artist_name)
+            if artist:
+                seed_artists.append(artist.id)
+    
+    if songs:
+        for song_name in songs:
+            song = search_song(song_name)
+            if song:
+                seed_tracks.append(song.id)
+    
+    if genres:
+        seed_genres.extend(genres)  # Assume user-provided genres are valid for now
+
+    # Spotify's API allows a maximum of 5 combined seed items
+    seed_artists = seed_artists[:5]
+    seed_tracks = seed_tracks[:5]
+    seed_genres = seed_genres[:5]
+
+    # Fetch recommendations
+    results = sp.recommendations(seed_artists=seed_artists, seed_tracks=seed_tracks, seed_genres=seed_genres, limit=limit)
+    
+    # Convert results to Song instances
+    recommended_songs = []
+    for track in results['tracks']:
+        artists = [artist['name'] for artist in track['artists']]
+        
+        song = Song(
+            id=track['id'],
+            name=track['name'],
+            artists=artists,
+            album=track['album']['name'],
+            release_date=track['album']['release_date'],
+            duration_ms=track['duration_ms'],
+            popularity=track['popularity'],
+            spotify_url=track['external_urls']['spotify'],
+            preview_url=track.get('preview_url')
+        )
+        recommended_songs.append(song)
+    
+    return recommended_songs
+
+
+def clear_cache():
+    """Clear all Spotify cache files."""
+    for cache_file in glob.glob(".cache*"):
+        os.remove(cache_file)
+        print(f"Removed cache file: {cache_file}")
+
+def authenticate(force_auth=False):
+    """
+    Authenticate the user with Spotify and return a Spotipy client instance.
+    Deletes any existing cache to ensure a fresh login if `force_auth` is True.
+    """
+    
+    global sp
+    if force_auth:
+        clear_cache()
+
+    print("Please log in to your Spotify account...")
+    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        redirect_uri=SPOTIPY_REDIRECT_URI,
+        scope=SCOPE,
+        show_dialog=force_auth  # Force login dialog if re-authentication is needed
+    ))
+
+    print("Authentication successful!")
+    return sp
 
 def get_user_top_tracks():
     """Fetch the user's top-played tracks and encapsulate each track in a Song instance."""
@@ -181,8 +235,6 @@ def get_user_top_artists():
         artists.append(artist)
     
     return artists
-
-
 
 def search_artist(artist_name):
     results = sp.search(q=f'artist:{artist_name}', type='artist', limit=1)

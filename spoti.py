@@ -1,11 +1,11 @@
-import os 
+import os
 import glob
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
-CLIENT_ID = os.getenv('SPOTIPY_CLIENT_ID')
-CLIENT_SECRET = os.getenv('SPOTIPY_CLIENT_SECRET')
-SPOTIPY_REDIRECT_URI = 'http://localhost:8080'  
+CLIENT_ID = '181dea1437d14614ae1f6cc4e6f0a54a'
+CLIENT_SECRET = 'f03f9a3bd9554adcb58d6f12a8fcdc0a'
+SPOTIPY_REDIRECT_URI = 'http://localhost:8080'
 SCOPE = 'playlist-modify-public user-top-read'
 
 class Artist:
@@ -26,7 +26,6 @@ class Artist:
             f"  Followers: {self.followers}\n"
             f"  Popularity: {self.popularity}\n"
             f"  Spotify URL: {self.spotify_url}"
-            # f"  Images: {self.images}"
         )
 
 class Song:
@@ -51,7 +50,6 @@ class Song:
             f"  Duration: {self.duration_ms // 1000}s\n"
             f"  Popularity: {self.popularity}\n"
             f"  Spotify URL: {self.spotify_url}"
-            # f"  Preview URL: {self.preview_url if self.preview_url else 'N/A'}"
         )
 
 class Album:
@@ -74,105 +72,44 @@ class Album:
             f"  Total Tracks: {self.total_tracks}\n"
             f"  Genres: {', '.join(self.genres) if self.genres else 'N/A'}\n"
             f"  Spotify URL: {self.spotify_url}"
-            # f"  Images: {self.images}"
         )
-        
-def get_recommendations(artists=None, songs=None, genres=None, limit=10):
-    """
-    Fetch recommendations from Spotify based on provided artists, songs, or genres.
-    :param artists: List of artist names (strings)
-    :param songs: List of song names (strings)
-    :param genres: List of genres (strings)
-    :param limit: Number of recommendations to fetch
-    :return: List of Song instances
-    """
-    seed_artists = []
-    seed_tracks = []
-    seed_genres = []
-    
-    # Validate and extract Spotify IDs for seeds
-    if artists:
-        for artist_name in artists:
-            artist = search_artist(artist_name)
-            if artist:
-                seed_artists.append(artist.id)
-    
-    if songs:
-        for song_name in songs:
-            song = search_song(song_name)
-            if song:
-                seed_tracks.append(song.id)
-    
-    if genres:
-        seed_genres.extend(genres)  # Assume user-provided genres are valid for now
-
-    # Spotify's API allows a maximum of 5 combined seed items
-    seed_artists = seed_artists[:5]
-    seed_tracks = seed_tracks[:5]
-    seed_genres = seed_genres[:5]
-
-    # Fetch recommendations
-    results = sp.recommendations(seed_artists=seed_artists, seed_tracks=seed_tracks, seed_genres=seed_genres, limit=limit)
-    
-    # Convert results to Song instances
-    recommended_songs = []
-    for track in results['tracks']:
-        artists = [artist['name'] for artist in track['artists']]
-        
-        song = Song(
-            id=track['id'],
-            name=track['name'],
-            artists=artists,
-            album=track['album']['name'],
-            release_date=track['album']['release_date'],
-            duration_ms=track['duration_ms'],
-            popularity=track['popularity'],
-            spotify_url=track['external_urls']['spotify'],
-            preview_url=track.get('preview_url')
-        )
-        recommended_songs.append(song)
-    
-    return recommended_songs
-
 
 def clear_cache():
-    """Clear all Spotify cache files."""
     for cache_file in glob.glob(".cache*"):
         os.remove(cache_file)
         print(f"Removed cache file: {cache_file}")
 
 def authenticate(force_auth=False):
-    """
-    Authenticate the user with Spotify and return a Spotipy client instance.
-    Deletes any existing cache to ensure a fresh login if `force_auth` is True.
-    """
-    
     global sp
     if force_auth:
         clear_cache()
-
     print("Please log in to your Spotify account...")
     sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
         client_id=CLIENT_ID,
         client_secret=CLIENT_SECRET,
         redirect_uri=SPOTIPY_REDIRECT_URI,
         scope=SCOPE,
-        show_dialog=force_auth  # Force login dialog if re-authentication is needed
+        show_dialog=force_auth
     ))
-
     print("Authentication successful!")
     return sp
 
+def create_playlist(name, description, public=True):
+    user_id = sp.current_user()['id']
+    playlist = sp.user_playlist_create(user=user_id, name=name, public=public, description=description)
+    print(f"Playlist created: {playlist['external_urls']['spotify']}")
+    return playlist
+
+def add_tracks_to_playlist(playlist_id, track_ids):
+    sp.playlist_add_items(playlist_id, track_ids)
+    print(f"Added {len(track_ids)} tracks to playlist.")
+
 def get_user_top_tracks():
-    """Fetch the user's top-played tracks and encapsulate each track in a Song instance."""
-    results = sp.current_user_top_tracks(limit=50, time_range='medium_term')  # You can adjust 'short_term' or 'long_term'
-    top_tracks = results['items']
-    
+    results = sp.current_user_top_tracks(limit=50, time_range='medium_term')
     songs = []
-    for track in top_tracks:
+    for track in results['items']:
         artists = [artist['name'] for artist in track['artists']]
-        
-        song = Song(
+        songs.append(Song(
             id=track['id'],
             name=track['name'],
             artists=artists,
@@ -182,48 +119,14 @@ def get_user_top_tracks():
             popularity=track['popularity'],
             spotify_url=track['external_urls']['spotify'],
             preview_url=track.get('preview_url')
-        )
-        songs.append(song)
+        ))
     return songs
 
-def get_user_top_albums():
-    """Fetch the user's top albums from their top tracks and encapsulate in Album instances."""
-    results = sp.current_user_top_tracks(limit=50, time_range='medium_term')  # You can adjust 'short_term' or 'long_term'
-    top_tracks = results['items']
-
-    album_map = {}
-    for track in top_tracks:
-        album_data = track['album']
-        album_id = album_data['id']
-
-        if album_id not in album_map:
-            # Extract artists
-            artists = [artist['name'] for artist in album_data['artists']]
-            
-            # Create an Album instance
-            album = Album(
-                id=album_id,
-                name=album_data['name'],
-                artists=artists,
-                release_date=album_data['release_date'],
-                total_tracks=album_data['total_tracks'],
-                genres=[],  # Album genres are not always available in this API endpoint
-                spotify_url=album_data['external_urls']['spotify'],
-                images=album_data['images']
-            )
-            album_map[album_id] = album
-
-    return list(album_map.values())
-
 def get_user_top_artists():
-    """Fetch the user's top artists and encapsulate each in Artist instances."""
-    results = sp.current_user_top_artists(limit=50, time_range='medium_term')  # You can adjust 'short_term' or 'long_term'
-    top_artists = results['items']
-    
+    results = sp.current_user_top_artists(limit=50, time_range='medium_term')
     artists = []
-    for artist_data in top_artists:
-        # Create an Artist instance
-        artist = Artist(
+    for artist_data in results['items']:
+        artists.append(Artist(
             id=artist_data['id'],
             name=artist_data['name'],
             genres=artist_data['genres'],
@@ -231,9 +134,7 @@ def get_user_top_artists():
             popularity=artist_data['popularity'],
             spotify_url=artist_data['external_urls']['spotify'],
             images=artist_data['images']
-        )
-        artists.append(artist)
-    
+        ))
     return artists
 
 def search_artist(artist_name):
@@ -249,14 +150,17 @@ def search_artist(artist_name):
             spotify_url=artist['external_urls']['spotify'],
             images=artist['images']
         )
-    else:
-        return None
+    return None
 
-def search_song(song_name):
-    results = sp.search(q=f'track:{song_name}', type='track', limit=1)
-    if results['tracks']['items']:
-        track = results['tracks']['items'][0]
-        return Song(
+def get_recommendations(seed_tracks=None, seed_artists=None, seed_genres=None, limit=10):
+    recommendations = sp.recommendations(
+        seed_tracks=seed_tracks,
+        seed_artists=seed_artists,
+        seed_genres=seed_genres,
+        limit=limit
+    )
+    return [
+        Song(
             id=track['id'],
             name=track['name'],
             artists=[artist['name'] for artist in track['artists']],
@@ -266,23 +170,6 @@ def search_song(song_name):
             popularity=track['popularity'],
             spotify_url=track['external_urls']['spotify'],
             preview_url=track.get('preview_url')
-        )
-    else:
-        return None
+        ) for track in recommendations['tracks']
+    ]
 
-def search_album(album_name):
-    results = sp.search(q=f'album:{album_name}', type='album', limit=1)
-    if results['albums']['items']:
-        album = results['albums']['items'][0]
-        return Album(
-            id=album['id'],
-            name=album['name'],
-            artists=[artist['name'] for artist in album['artists']],
-            release_date=album['release_date'],
-            total_tracks=album['total_tracks'],
-            genres=album.get('genres', []),  # not always available
-            spotify_url=album['external_urls']['spotify'],
-            images=album['images']
-        )
-    else:
-        return None

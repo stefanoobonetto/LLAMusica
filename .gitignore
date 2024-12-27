@@ -129,6 +129,8 @@ env.bak/
 venv.bak/
 spoti_venv/
 
+
+
 # Spyder project settings
 .spyderproject
 .spyproject

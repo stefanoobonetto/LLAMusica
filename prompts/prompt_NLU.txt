@@ -28,7 +28,7 @@ You must identify one or more of the following intents, ensuring each is accurat
      - time_frame (type: string, values: ["short_term", "medium_term", "long_term"], default: "medium_term")
        - short_term: Data from approximately the past 4 weeks.
        - medium_term: Data from approximately the past 6 months.
-       - long_term: Data from several years (the user’s entire Spotify listening history).
+       - long_term: Data from past yerar or also several years .
      - limit (type: int, default: null)
 
 5. Intent: user_top_artists

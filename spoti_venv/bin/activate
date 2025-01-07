@@ -58,6 +58,10 @@ if [ -z "${VIRTUAL_ENV_DISABLE_PROMPT:-}" ] ; then
     export PS1
 fi
 
+# Set custom environment variables
+export SPOTIPY_CLIENT_ID="181dea1437d14614ae1f6cc4e6f0a54a"
+export SPOTIPY_CLIENT_SECRET="f03f9a3bd9554adcb58d6f12a8fcdc0a"
+
 # This should detect bash and zsh, which have a hash command that must
 # be called to get it to forget past commands.  Without forgetting
 # past commands the $PATH changes we made may not be respected

@@ -6,7 +6,27 @@ from spotipy.oauth2 import SpotifyOAuth
 CLIENT_ID = '181dea1437d14614ae1f6cc4e6f0a54a'
 CLIENT_SECRET = 'f03f9a3bd9554adcb58d6f12a8fcdc0a'
 SPOTIPY_REDIRECT_URI = 'http://localhost:8080'
-SCOPE = 'playlist-modify-public user-top-read'
+SCOPE = (
+    "ugc-image-upload",
+    "user-read-playback-state",
+    "user-modify-playback-state",
+    "user-read-currently-playing",
+    "app-remote-control",
+    "streaming",
+    "playlist-read-private",
+    "playlist-read-collaborative",
+    "playlist-modify-private",
+    "playlist-modify-public",
+    "user-follow-modify",
+    "user-follow-read",
+    "user-read-playback-position",
+    "user-top-read",
+    "user-read-recently-played",
+    "user-library-modify",
+    "user-library-read",
+    "user-read-email",
+    "user-read-private"
+)
 
 class Artist:
     def __init__(self, id, name, genres, followers, popularity, spotify_url, images):
@@ -88,79 +108,32 @@ def authenticate(force_auth=False):
         client_id=CLIENT_ID,
         client_secret=CLIENT_SECRET,
         redirect_uri=SPOTIPY_REDIRECT_URI,
-        scope=SCOPE,
+        scope="user-library-read user-top-read playlist-read-private",
         show_dialog=force_auth
     ))
     print("Authentication successful!")
     return sp
 
-def create_playlist(name, description, public=True):
-    user_id = sp.current_user()['id']
-    playlist = sp.user_playlist_create(user=user_id, name=name, public=public, description=description)
-    print(f"Playlist created: {playlist['external_urls']['spotify']}")
-    return playlist
+#  SEARCH A GIVEN SONG AND RETURN IT OR RETURN THE DETAIL ASKED FOR
 
-def add_tracks_to_playlist(playlist_id, track_ids):
-    sp.playlist_add_items(playlist_id, track_ids)
-    print(f"Added {len(track_ids)} tracks to playlist.")
+def search_song(song_name, detail=None):
+    """
+    Search for a song on Spotify and return its details.
 
-def get_user_top_tracks():
-    results = sp.current_user_top_tracks(limit=50, time_range='medium_term')
-    songs = []
-    for track in results['items']:
-        artists = [artist['name'] for artist in track['artists']]
-        songs.append(Song(
-            id=track['id'],
-            name=track['name'],
-            artists=artists,
-            album=track['album']['name'],
-            release_date=track['album']['release_date'],
-            duration_ms=track['duration_ms'],
-            popularity=track['popularity'],
-            spotify_url=track['external_urls']['spotify'],
-            preview_url=track.get('preview_url')
-        ))
-    return songs
+    Parameters:
+        song_name (str): The name of the song to search for.
+        detail (str, optional): Specific detail to extract from the song information. 
+                                Options: "id", "name", "artists", "album", "release_date", 
+                                "duration_ms", "popularity", "spotify_url", "preview_url".
 
-def get_user_top_artists():
-    results = sp.current_user_top_artists(limit=50, time_range='medium_term')
-    artists = []
-    for artist_data in results['items']:
-        artists.append(Artist(
-            id=artist_data['id'],
-            name=artist_data['name'],
-            genres=artist_data['genres'],
-            followers=artist_data['followers']['total'],
-            popularity=artist_data['popularity'],
-            spotify_url=artist_data['external_urls']['spotify'],
-            images=artist_data['images']
-        ))
-    return artists
-
-def search_artist(artist_name):
-    results = sp.search(q=f'artist:{artist_name}', type='artist', limit=1)
-    if results['artists']['items']:
-        artist = results['artists']['items'][0]
-        return Artist(
-            id=artist['id'],
-            name=artist['name'],
-            genres=artist['genres'],
-            followers=artist['followers']['total'],
-            popularity=artist['popularity'],
-            spotify_url=artist['external_urls']['spotify'],
-            images=artist['images']
-        )
-    return None
-
-def get_recommendations(seed_tracks=None, seed_artists=None, seed_genres=None, limit=10):
-    recommendations = sp.recommendations(
-        seed_tracks=seed_tracks,
-        seed_artists=seed_artists,
-        seed_genres=seed_genres,
-        limit=limit
-    )
-    return [
-        Song(
+    Returns:
+        Song: An instance of the Song class with detailed information about the song.
+        None: If no song is found or the query fails.
+    """
+    results = sp.search(q=f"track:{song_name}", type="track", limit=1)
+    if results['tracks']['items']:
+        track = results['tracks']['items'][0]
+        song = Song(
             id=track['id'],
             name=track['name'],
             artists=[artist['name'] for artist in track['artists']],
@@ -169,7 +142,351 @@ def get_recommendations(seed_tracks=None, seed_artists=None, seed_genres=None, l
             duration_ms=track['duration_ms'],
             popularity=track['popularity'],
             spotify_url=track['external_urls']['spotify'],
-            preview_url=track.get('preview_url')
-        ) for track in recommendations['tracks']
-    ]
+            preview_url=track['preview_url']
+        )
+        # Return a specific detail if requested, otherwise return the Song object
+        if detail:
+            return getattr(song, detail, None)
+        return song
+    return None
 
+# SEARCH A GIVEN ARTIST AND RETURN IT OR RETURN THE DETAIL ASKED FOR
+
+def search_artist(artist_name, detail=None):
+    """
+    Search for an artist on Spotify and return their details.
+
+    Parameters:
+        artist_name (str): The name of the artist to search for.
+        detail (str, optional): Specific detail to extract from the artist information.
+                                Options: "id", "name", "genres", "followers", "popularity", 
+                                "spotify_url", "images".
+
+    Returns:
+        Artist: An instance of the Artist class with detailed information about the artist.
+        None: If no artist is found or the query fails.
+    """
+    # Search for the artist using Spotify's API
+    results = sp.search(q=f"artist:{artist_name}", type="artist", limit=1)
+    if results['artists']['items']:
+        artist_data = results['artists']['items'][0]
+        artist = Artist(
+            id=artist_data['id'],
+            name=artist_data['name'],
+            genres=artist_data['genres'],
+            followers=artist_data['followers']['total'],
+            popularity=artist_data['popularity'],
+            spotify_url=artist_data['external_urls']['spotify'],
+            images=artist_data['images']
+        )
+        # Return a specific detail if requested, otherwise return the Artist object
+        if detail:
+            return getattr(artist, detail, None)
+        return artist
+    return None
+
+# SEARCH A GIVEN ALBUM AND RETURN IT OR RETURN THE DETAIL ASKED FOR
+
+def search_album(album_name, detail=None):
+    """
+    Search for an album on Spotify and return its details.
+
+    Parameters:
+        album_name (str): The name of the album to search for.
+        detail (str, optional): Specific detail to extract from the album information.
+                                Options: "id", "name", "artists", "release_date", "total_tracks",
+                                "genres", "spotify_url", "images".
+
+    Returns:
+        Album: An instance of the Album class with detailed information about the album.
+        None: If no album is found or the query fails.
+    """
+    results = sp.search(q=f"album:{album_name}", type="album", limit=1)
+    if results['albums']['items']:
+        album_data = results['albums']['items'][0]
+        album = Album(
+            id=album_data['id'],
+            name=album_data['name'],
+            artists=[artist['name'] for artist in album_data['artists']],
+            release_date=album_data['release_date'],
+            total_tracks=album_data['total_tracks'],
+            genres=album_data.get('genres', []),  # Genres may not always be available
+            spotify_url=album_data['external_urls']['spotify'],
+            images=album_data['images']
+        )
+        # Return a specific detail if requested, otherwise return the Album object
+        if detail:
+            return getattr(album, detail, None)
+        return album
+    return None
+
+# GET ARTIST'S TOP TRACKS
+
+def get_artist_top_tracks(artist_name, country="US"):
+    """
+    Fetch the top tracks of a specific artist.
+
+    Parameters:
+        artist_name (str): The name of the artist.
+        country (str, optional): The country code for market-specific top tracks. Default is "US".
+
+    Returns:
+        list[Song]: A list of Song instances representing the artist's top tracks.
+        None: If the artist is not found or no tracks are available.
+    """
+    artist_data = search_artist(artist_name)
+    if not artist_data:
+        return None
+
+    artist_id = artist_data.id
+    results = sp.artist_top_tracks(artist_id, country=country)
+    if results['tracks']:
+        return [
+            Song(
+                id=track['id'],
+                name=track['name'],
+                artists=[artist['name'] for artist in track['artists']],
+                album=track['album']['name'],
+                release_date=track['album']['release_date'],
+                duration_ms=track['duration_ms'],
+                popularity=track['popularity'],
+                spotify_url=track['external_urls']['spotify'],
+                preview_url=track['preview_url']
+            )
+            for track in results['tracks']
+        ]
+    return None
+
+# GET NEWEST RELEASES
+
+def get_new_releases(country=None, limit=10):
+    """
+    Fetch new album releases on Spotify.
+
+    Parameters:
+        limit (int, optional): Number of new releases to fetch. Default is 10.
+
+    Returns:
+        list[Album]: A list of Album instances representing new releases.
+    """
+    results = sp.new_releases(country=country, limit=limit)
+    if results['albums']['items']:
+        return [
+            Album(
+                id=album['id'],
+                name=album['name'],
+                artists=[artist['name'] for artist in album['artists']],
+                release_date=album['release_date'],
+                total_tracks=album['total_tracks'],
+                genres=[],  # Genres are not provided in the new releases endpoint
+                spotify_url=album['external_urls']['spotify'],
+                images=album['images']
+            )
+            for album in results['albums']['items']
+        ]
+    return None
+
+# GET USER'S TOP TRACKS
+
+def get_user_top_tracks(limit=10, time_range="medium_term"):
+    """
+    Fetch the user's top tracks.
+
+    Parameters:
+        limit (int, optional): Number of top tracks to fetch. Default is 10.
+
+    Returns:
+        list[Song]: A list of Song instances representing the user's top tracks.
+    """
+    results = sp.current_user_top_tracks(limit=limit, time_range=time_range)
+    if results['items']:
+        return [
+            Song(
+                id=track['id'],
+                name=track['name'],
+                artists=[artist['name'] for artist in track['artists']],
+                album=track['album']['name'],
+                release_date=track['album']['release_date'],
+                duration_ms=track['duration_ms'],
+                popularity=track['popularity'],
+                spotify_url=track['external_urls']['spotify'],
+                preview_url=track['preview_url']
+            )
+            for track in results['items']
+        ]
+    return None
+
+# GET USER'S TOP ARTISTS
+
+def get_user_top_artists(limit=10):
+    """
+    Fetch the user's top artists.
+
+    Parameters:
+        limit (int, optional): Number of top artists to fetch. Default is 10.
+
+    Returns:
+        list[Artist]: A list of Artist instances representing the user's top artists.
+    """
+    results = sp.current_user_top_artists(limit=limit)
+    if results['items']:
+        return [
+            Artist(
+                id=artist['id'],
+                name=artist['name'],
+                genres=artist['genres'],
+                followers=artist['followers']['total'],
+                popularity=artist['popularity'],
+                spotify_url=artist['external_urls']['spotify'],
+                images=artist['images']
+            )
+            for artist in results['items']
+        ]
+    return None
+
+# GET ARTIST'S RELATED ARTISTS
+
+def get_related_artists(artist_name):
+    artist_data = search_artist(artist_name)
+    if not artist_data:
+        print(f"Artista '{artist_name}' non trovato.")
+        return None
+
+    artist_id = artist_data.id
+    try:
+        results = sp.artist_related_artists(artist_id)
+        if 'artists' in results and results['artists']:
+            return [
+                Artist(
+                    id=related_artist['id'],
+                    name=related_artist['name'],
+                    genres=related_artist['genres'],
+                    followers=related_artist['followers']['total'],
+                    popularity=related_artist['popularity'],
+                    spotify_url=related_artist['external_urls']['spotify'],
+                    images=related_artist['images']
+                )
+                for related_artist in results['artists']
+            ]
+        else:
+            print(f"Nessun artista correlato trovato per '{artist_name}'.")
+            return None
+    except spotipy.exceptions.SpotifyException as e:
+        print(f"Errore durante la ricerca degli artisti correlati: {e}")
+    except Exception as e:
+        print(f"Errore sconosciuto durante la ricerca degli artisti correlati: {e}")
+    return None
+
+# SEARCH FOR PLAYLISTS
+
+def search_playlists(keyword, limit=5):
+    """
+    Search for playlists on Spotify by keyword.
+
+    Parameters:
+        keyword (str): The search keyword.
+        limit (int, optional): Number of playlists to fetch. Default is 5.
+
+    Returns:
+        list[dict]: A list of playlist details.
+    """
+    try:
+        results = sp.search(q=f"playlist:{keyword}", type="playlist", limit=limit)
+        if results and 'playlists' in results and results['playlists']['items']:
+            return [
+                {
+                    "id": playlist['id'],
+                    "name": playlist['name'],
+                    "owner": playlist['owner']['display_name'],
+                    "spotify_url": playlist['external_urls']['spotify']
+                }
+                for playlist in results['playlists']['items']
+            ]
+        else:
+            print(f"Nessuna playlist trovata con il termine '{keyword}'.")
+            return None
+    except Exception as e:
+        print(f"Errore durante la ricerca delle playlist: {e}")
+        return None
+
+def test_functions():
+    print("Inizio dei test per le funzioni di utilità di Spotify...")
+    print("Autenticazione in corso...")
+    sp = authenticate()
+
+    print("\n--- TEST: Search for a Song ---")
+    song_name = "Shape of You"
+    song = search_song(song_name)
+    print(f"Risultato per la canzone '{song_name}':\n", song if song else "Nessuna canzone trovata.")
+
+    print("\n--- TEST: Search for an Artist ---")
+    artist_name = "Ed Sheeran"
+    artist = search_artist(artist_name)
+    print(f"Risultato per l'artista '{artist_name}':\n", artist if artist else "Nessun artista trovato.")
+
+    print("\n--- TEST: Search for an Album ---")
+    album_name = "Divide"
+    album = search_album(album_name)
+    print(f"Risultato per l'album '{album_name}':\n", album if album else "Nessun album trovato.")
+
+    print("\n--- TEST: Get Artist's Top Tracks ---")
+    top_tracks = get_artist_top_tracks(artist_name)
+    if top_tracks:
+        print(f"Top Tracks per '{artist_name}':\n")
+        for track in top_tracks:
+            print(track, "\n")
+    else:
+        print(f"Nessuna traccia trovata per l'artista '{artist_name}'.")
+
+    
+    print("\n--- TEST: Get Newest Releases ---")
+    new_releases = get_new_releases(limit=5)
+    if new_releases:
+        print("Nuove uscite:\n")
+        for release in new_releases:
+            print(release, "\n")
+    else:
+        print("Nessuna nuova uscita trovata.")
+
+    print("\n--- TEST: Get User's Top Tracks ---")
+    top_tracks_user = get_user_top_tracks(limit=5)
+    if top_tracks_user:
+        print("Le tracce più ascoltate dall'utente:\n")
+        for track in top_tracks_user:
+            print(track, "\n")
+    else:
+        print("Nessuna traccia principale trovata per l'utente.")
+
+    print("\n--- TEST: Get User's Top Artists ---")
+    top_artists_user = get_user_top_artists(limit=5)
+    if top_artists_user:
+        print("Gli artisti più ascoltati dall'utente:\n")
+        for artist in top_artists_user:
+            print(artist, "\n")
+    else:
+        print("Nessun artista principale trovato per l'utente.")
+
+    print("\n--- TEST: Get Related Artists ---")
+    related_artists = get_related_artists(artist_name)
+    if related_artists:
+        print(f"Artisti correlati a '{artist_name}':\n")
+        for related in related_artists:
+            print(related, "\n")
+    else:
+        print(f"Nessun artista correlato trovato per '{artist_name}'.")
+
+
+    print("\n--- TEST: Search for Playlists ---")
+    keyword = "Workout"
+    playlists = search_playlists(keyword, limit=5)
+    if playlists:
+        print(f"Playlist trovate con il termine '{keyword}':\n")
+        for playlist in playlists:
+            print(f"Nome: {playlist['name']}, Proprietario: {playlist['owner']}, URL: {playlist['spotify_url']}")
+    else:
+        print(f"Nessuna playlist trovata con il termine '{keyword}'.")
+
+    print("\n--- Tutti i test completati! ---")
+
+if __name__ == "__main__":
+    test_functions()

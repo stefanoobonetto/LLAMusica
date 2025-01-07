@@ -1,46 +1,70 @@
-import os 
 from spoti import *
 from spotipy.oauth2 import SpotifyOAuth
 
+from utils import *
+from model_query import *
+from dict_manager import *
 
-# To access CLIENT_ID and CLIENT_SECRET, see the dashboard of your Spotify for Developers account https://developer.spotify.com/dashboard
-# Now I've exported the CLIENT_ID and CLIENT_SECRET as environment variables
+USER_INPUT = "user_input.txt"
 
-# sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET))
-# is the same as
+def retry_with_new_instance(func, input_data, instance_generator, max_attempts=2, **kwargs):
+    for attempt in range(max_attempts):
+        try:
+            instance = instance_generator()  # Generate a fresh instance for each attempt
+            return func(instance, input_data, **kwargs)
+        except Exception as e:
+            print(f"Error during attempt {attempt + 1}/{max_attempts}: {e}")
+            if attempt + 1 == max_attempts:
+                raise  # Re-raise the last exception if all attempts fail
+
+
+def process_user_input(user_input):
+    try:
+        # Retry NLU parsing with new ModelQuery instances
+        response_NLU = retry_with_new_instance(
+            func=ask_NLU,
+            input_data=user_input,
+            instance_generator=ModelQuery,
+            max_attempts=3
+        )
+
+        # Validate the NLU response
+        dict_status = DictManager()
+        # print("NLU_RESPONSE: \n", response_NLU)
+        dict_status.validate_dict(response_NLU)
+        
+        print("\nValidated NLU Response:")
+        print(dict_status.to_json())
+
+        return dict_status.to_json()  # Returning validated JSON for further use if needed
+    except Exception as e:
+        print(f"Failed to process user input: \"{user_input}\".")
+        return None
+
 
 def main():
+    # Authenticate Spotify (assuming `authenticate` function handles this)
     authenticate()
 
-    # Fetch user data
-    print("Fetching your top tracks...")
-    top_tracks = get_user_top_tracks()
-    for song in top_tracks[:5]:
-        print(song)
+    # Read and parse user inputs from the file
+    with open(USER_INPUT, "r") as file:
+        USER_INPUTS = [line.strip() for line in file.read().split("\n\n") if line.strip()]
 
-    print("\nFetching your top artists...")
-    top_artists = get_user_top_artists()
-    for artist in top_artists[:5]:
-        print(artist)
+    print("\n\n\nWelcome to LLAMusica platform 🎧🎶!\n\n\n")
 
-    # Search for an artist
-    print("\nSearching for an artist...")
-    artist_name = "Adele"
-    artist = search_artist(artist_name)
-    if artist:
-        print(f"Found artist: {artist}")
+    # Process each user input
+    for idx, user_input in enumerate(USER_INPUTS, 1):
+        
+        print("-"*95)
+        print(f"\nProcessing Input {idx}/{len(USER_INPUTS)}: \"{user_input}\"")
+        response = process_user_input(user_input)
+        while not response:
+            # Retry processing the same input after a failed attempt
+            print("\nRetrying the same input after a failed attempt.")
+            response = process_user_input(user_input)
+            
+    print("\nAll inputs have been processed. Exiting.")
 
-    # Create and populate a playlist
-    print("\nCreating a playlist...")
-    playlist = create_playlist("My Top Tracks", "A playlist of my favorite songs.")
-    track_ids = [track.id for track in top_tracks[:10]]
-    add_tracks_to_playlist(playlist['id'], track_ids)
-
-    # Get recommendations
-    print("\nGetting recommendations based on top tracks...")
-    recommendations = get_recommendations(seed_tracks=[top_tracks[0].id], limit=5)
-    for rec in recommendations:
-        print(rec)
 
 if __name__ == "__main__":
     main()

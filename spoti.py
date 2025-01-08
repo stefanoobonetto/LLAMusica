@@ -29,7 +29,7 @@ SCOPE = (
 )
 
 class Artist:
-    def __init__(self, id, name, genres, followers, popularity, spotify_url, images):
+    def __init__(self, id, name, genres, followers, popularity, spotify_url, images, top_tracks=None):
         self.id = id
         self.name = name
         self.genres = genres
@@ -37,16 +37,20 @@ class Artist:
         self.popularity = popularity
         self.spotify_url = spotify_url
         self.images = images
+        self.top_tracks = top_tracks or []  # Default to an empty list if not provided
 
     def __str__(self):
+        top_tracks_str = "\n    ".join([f"{idx + 1}. {track.name} ({track.spotify_url})" for idx, track in enumerate(self.top_tracks)]) if self.top_tracks else "N/A"
         return (
             f"Artist:\n"
             f"  Name: {self.name}\n"
             f"  Genres: {', '.join(self.genres) if self.genres else 'N/A'}\n"
             f"  Followers: {self.followers}\n"
             f"  Popularity: {self.popularity}\n"
-            f"  Spotify URL: {self.spotify_url}"
+            f"  Spotify URL: {self.spotify_url}\n"
+            f"  Top Tracks:\n    {top_tracks_str}"
         )
+
 
 class Song:
     def __init__(self, id, name, artists, album, release_date, duration_ms, popularity, spotify_url, preview_url):
@@ -163,13 +167,13 @@ def get_song_info(*args):
 
 def get_artist_info(*args):
     """
-    Search for an artist on Spotify and return their details.
+    Search for an artist on Spotify and return their details, including top tracks.
 
     Parameters:
         artist_name (str): The name of the artist to search for.
         detail (str, optional): Specific detail to extract from the artist information.
                                 Options: "id", "name", "genres", "followers", "popularity", 
-                                "spotify_url", "images".
+                                "spotify_url", "images", "top_tracks".
 
     Returns:
         Artist: An instance of the Artist class with detailed information about the artist.
@@ -183,8 +187,13 @@ def get_artist_info(*args):
 
     # Search for the artist using Spotify's API
     results = sp.search(q=f"artist:{artist_name}", type="artist", limit=1)
+    
     if results['artists']['items']:
         artist_data = results['artists']['items'][0]
+        
+        # Fetch top tracks for the artist
+        top_tracks = get_artist_top_tracks(artist_name)
+        
         artist = Artist(
             id=artist_data['id'],
             name=artist_data['name'],
@@ -192,8 +201,10 @@ def get_artist_info(*args):
             followers=artist_data['followers']['total'],
             popularity=artist_data['popularity'],
             spotify_url=artist_data['external_urls']['spotify'],
-            images=artist_data['images']
+            images=artist_data['images'],
+            top_tracks=top_tracks  # Include top tracks
         )
+        
         # Return a specific detail if requested, otherwise return the Artist object
         if details and "all" not in details:
             return_dic = {}

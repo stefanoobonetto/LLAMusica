@@ -55,47 +55,48 @@ def split_intent(input_string):
     else:
         raise ValueError("Invalid input string format. Expected format: 'action(intent)'")
 
+def get_args(DM_component_part):
+    args = []
+    for elem in DM_component_part.get("args"):
+        args.append(elem)
+    return args
+
 def check_next_best_action_and_do(DM_component_part):
     # Check if the DM component has a "next_best_action" key
     if "next_best_action" in DM_component_part:
         next_best_action = DM_component_part["next_best_action"]
-        print(f"\nNext best action: {next_best_action}")    # Next best action: confirmation(album_info)
+        print(f"\nNext best action: {next_best_action}")  # Next best action: confirmation(artist_info)
+        
         action, intent = split_intent(next_best_action)
-        print(f"\n- action: {action} \n- Intent: {intent}")
+        print(f"\n- action: {action} \n- intent: {intent}")
         
         if action == "confirmation":
-            if intent == "album_info":
-                print("\nAlbum info requested. Fetching album info.")
-                args = []
-                for elem in DM_component_part.get("args"):
-                    args.append(elem)
+            if intent == "artist_info":
+                print("\nArtist info requested. Fetching artist info.")
+                args = get_args(DM_component_part)
                 
-                print("\nArgs: ", args)
-                                
-                album_info = get_album_info(*args)
-                print("\nAlbum Info:")
-                print(album_info)
-            # elif intent == "artist_info":
-            #     print("\nArtist info requested. Fetching artist info.")
-            #     artist_name = DM_component_part.get("artist_name")
-            #     print(f"\nArtist Name: {artist_name}")
-            #     artist_info = get_artist_info(artist_name)
-            #     print("\nArtist Info:")
-            #     print(artist_info)
-            # elif intent == "track_info":
-            #     print("\nTrack info requested. Fetching track info.")
-            #     track_name = DM_component_part.get("track_name")
-            #     print(f"\nTrack Name: {track_name}")
-            #     track_info = get_song_info(track_name)
-            #     print("\nTrack Info:")
-            #     print(track_info)    
+                if args:
+                    artist_info = get_artist_info(*args)
+                    if artist_info:
+                        print("\nArtist Info:")
+                        print(artist_info)
+                    else:
+                        print("\nFailed to fetch artist info or no data returned.")
+                else:
+                    print("\nNo valid arguments provided for fetching artist info.")
+                
+                # Mark action as completed
+                DM_component_part["next_best_action"] = None
         elif action == "request_info":
             response_NLG = ask_NLG(model_query, input_data=DM_component_part)
+            print("\nNLG Response:")
+            print(response_NLG)
             
-            
-        
+            # Mark action as completed
+            DM_component_part["next_best_action"] = None
     else:
         print("\nNo next best action found in DM response.")
+
 
 def main():
 
@@ -126,7 +127,7 @@ def main():
                 
         DM_component_part = json_DM.get("DM", {})
                 
-        print("\n JSON DM: ", DM_component_part)
+        # print("\n JSON DM: ", DM_component_part)
         
         check_next_best_action_and_do(DM_component_part)
         

@@ -1,37 +1,59 @@
-What is the release date and genre of the album Lemonade by Beyoncé?
+What are the release date and total tracks of the album Red by Taylor Swift?
 
-Tell me the duration and release date of the song Happy.
+How many followers and top tracks does The Weeknd have?
 
-Show me my top artists for the past year.
+Show me my favorite artists for the last 6 months.
 
-How many tracks does the album Divide have and what are its genres?
+What is the duration and artist of the song Someone Like You?
 
-What is Drake's popularity, and how many followers does he have?
+Compare the release dates of the albums Fearless and Speak Now by Taylor Swift.
 
-Compare the popularity of Dua Lipa and Billie Eilish.
+What are the genres of the song Hotel California?
 
-List the release dates of the songs Bad Romance and Poker Face.
+List the release date and duration of the song Uptown Funk.
 
-What genre is the album Born This Way by Lady Gaga, and how many tracks does it have?
+Show me my top 5 tracks from the past month.
 
-Show me my top 10 tracks over the last 3 months.
+Is the album 25 more popular than the album 1989?
 
-Is the song Drivers License more popular than Good 4 U?
+What is the popularity of the song Shape of You?
 
-Compare the total tracks of the albums 21 and 25 by Adele.
+Compare the popularity of Ed Sheeran and Justin Bieber.
 
-Which genres is The Weeknd associated with, and what are his top tracks?
+How many tracks does the album Abbey Road have, and when was it released?
 
-What is the album name and artist for the song Shallow?
+What are the genres and top tracks of Beyoncé?
 
-How popular is the song Levitating by Dua Lipa?
+Show me my most played artists of all time.
 
-What are the genres and release date of the album A Night at the Opera?
+What is the release date and genre of the album Melodrama by Lorde?
 
-Compare the followers of Billie Eilish and Harry Styles.
+Compare the release dates of the songs Rolling in the Deep and Hello.
 
-What is the duration of the song Bohemian Rhapsody and who is the artist?
+What is the artist name and album for the song Rolling in the Deep?
 
-Show me my most played songs of all time.
+How many followers does Billie Eilish have, and what is her popularity?
 
-What is the total track count and popularity of the album After Hours?
+What are the genres and total tracks of the album Rumours by Fleetwood Mac?
+
+Is the song Dynamite by BTS more popular than the song Butter?
+
+Compare the popularity and followers of Adele and Taylor Swift.
+
+What is the total duration and artist of the album Thriller by Michael Jackson?
+
+Show me my top 15 tracks for the past 6 months.
+
+What are the genres and release date of the album Dark Side of the Moon?
+
+Compare the popularity of the albums Lemonade and Renaissance by Beyoncé.
+
+What is the duration and genre of the song Perfect by Ed Sheeran?
+
+Show me my most played songs from the last year.
+
+Compare the release dates of the albums Born to Die and Ultraviolence by Lana Del Rey.
+
+What is the album and artist for the song Bad Guy?
+
+How many tracks does the album Folklore have, and what is its release date?

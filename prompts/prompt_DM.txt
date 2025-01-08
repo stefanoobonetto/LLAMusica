@@ -3,33 +3,59 @@ Your goal is to determine the next best action based on the structured JSON inpu
 produce an updated JSON output following these guidelines:
 
 1. Analyze the Input:
-    - The input JSON will include:
-        - "intent": The identified user intent.
-        - "slots": A dictionary of extracted slot names and their values. Null values indicate missing information.
+    - The input JSON will include a entry of dictionary with key = "NLU" containing:
+        - The identified user intent.
+        - "slots": A dictionary of extracted slot names and their values. null values indicate missing information.
 
-2. Determine the Next Best Action:
-    Based on the provided input, select one of the following actions:
-    - "request_info(slot_name)": If one or more slots required for the intent are missing (i.e., null values).
-    - "confirmation(intent)": If all slots required for the intent are filled with values, indicating readiness to proceed.
-    - "execute_task(intent)": For intents that do not require slot-filling and can be directly executed (e.g., top_tracks, top_artists, out_of_domain).
-
-3. Handle Slot Updates:
-    - If the user provides an update to a specific slot in subsequent turns, update that slot value in the JSON and reassess the next action.
-
-4. Output Format:
+2. Output Format:
     - Return the updated JSON object including:
-        - The original NLU entry.
+        - The original "NLU" entry.
         - A "DM" entry specifying the "next_best_action" field.
     - Use the following structure:
         {
             "NLU": { ... },
-            "DM": {
-                "next_best_action": ...
-            }
+            "DM": { "next_best_action": ... 
+                    "args" : ...
+                }
         }
+    - Pay attention to JSON structure and syntax, it has to be rigorous, in particular be careful with ',' delimiters.
+
+3. Determine the "next_best_action" and eventually the "args" list:
+    Based on the provided input, select one of the following actions:
+    - "request_info(intent)": ONLY if one or more slots required for the intent are missing (i.e., null values).
+      The "args" list will contain the slots missing.
+      Input: { "user_top_tracks": { "slots": { "time_frame": "short_term", "limit": null } } }
+      Output: { "NLU": { { "user_top_tracks": { "slots": { "time_frame": "short_term", "limit": null } } } },
+                "DM": { "next_best_action": "request_info(user_top_tracks)" 
+                        "args": [ "limit" ] } }
+
+      A request_info action is required only for null slot values, not for an element of detail list. 
+      
+    - "confirmation(intent)" and a list "args" containing what the user want to know about the intent (only in the case of info intents like song_info, artist_info, 
+      album_info) or limit and time_frame values in the case of "user_top_artists" and "user_top_tracks" intents or entity_type, entity_1, entity_2 and criterion values in the 
+      case of "comparison" intent. 
+      Input 1: { "song_info": { "slots": { "song_name": "Perfect", "detail": [ "duration", "genre" ] } } }
+      Output 1: { "NLU": { { "song_info": { "slots": { "song_name": "Perfect", "detail": [ "duration", "genre" ] } } } },
+                "DM": { "next_best_action": "confirmation(song_info)", 
+                        "args": ["Perfect", "duration", "genre"] } }
+ 
+      Input 2: 
+      Output 2: { "NLU": { { "user_top_tracks": { "slots": { "time_frame": "short_term", "limit": "10" } } } },
+                "DM": { "next_best_action": "confirmation(user_top_tracks), 
+                        "args": ["short_term", "10"] } }
+
+4. General rule:
+    If a slot value is null, we will have that the next_best_action will be a request_info, otherwise it will be a confirmation. 
+    e.g. 
+    Correct output: { "NLU": { "album_info": { "slots": { "album_name": "Red", "detail": [ "release_date", "total_tracks" ] } } }, "DM": { "next_best_action": "confirmation(album_info)", "args": [ "Red", "release_date", "total_tracks" ] } }
+    Wrong output (release_date is a detail, not a slot):{ "NLU": { "album_info": { "slots": { "album_name": "Red", "detail": [ "release_date", "total_tracks" ] } } }, "DM": { "next_best_action": "request_info(release_date)" } }
 
 5. Notes:
     - Ensure the output JSON is returned with no additional explanation or text.
-    - Always prioritize filling missing slots before proceeding to confirmation or execution.
+    - Always prioritize filling missing slots before proceeding to answers.
     - Handle slot updates efficiently by reassessing the state of slots and the next action dynamically.
     - Maintain the integrity of the JSON structure and adhere to the specified format.
+
+6. Example outputs:
+    Output 1: { "NLU": { "artist_info": { "slots": { "artist_name": "The Weeknd", "detail": [ "followers", "top_tracks" ] } } }, "DM": { "next_best_action": "confirmation(artist_info)", "args": [ "The Weeknd", "followers", "top_tracks" ] } }
+    Output 2: { "NLU": { "comparison": { "slots": { "entity_type": "album", "entity_1": "Fearless", "entity_2": "Speak Now", "criterion": "release_date" } } }, "DM": { "next_best_action": "confirmation("comparison)", "args": [ "album", "Fearless", "Speak Now", "release_date" ] } }

@@ -17,8 +17,7 @@ def retry_with_new_instance(func, input_data, instance_generator, max_attempts=2
             if attempt + 1 == max_attempts:
                 raise  # Re-raise the last exception if all attempts fail
 
-
-def process_user_input(user_input):
+def NLU_component_processing(user_input):
     try:
         # Retry NLU parsing with new ModelQuery instances
         response_NLU = retry_with_new_instance(
@@ -29,6 +28,7 @@ def process_user_input(user_input):
         )
 
         # Validate the NLU response
+        global dict_status 
         dict_status = DictManager()
         # print("NLU_RESPONSE: \n", response_NLU)
         dict_status.validate_dict(response_NLU)
@@ -36,11 +36,59 @@ def process_user_input(user_input):
         print("\nValidated NLU Response:")
         print(dict_status.to_json())
 
-        return dict_status.to_json()  # Returning validated JSON for further use if needed
+        # Return both the string and dictionary versions of dict_status
+        return dict_status.to_json(), dict_status.dict_status
     except Exception as e:
         print(f"Failed to process user input: \"{user_input}\".")
+        return None, None
+
+
+def DM_component_processing(response_NLU):
+    try:
+        # Retry NLU parsing with new ModelQuery instances
+        response_DM = retry_with_new_instance(
+            func=ask_DM,
+            input_data=response_NLU,
+            instance_generator=ModelQuery,
+            max_attempts=3
+        )
+
+        # print("DM RESPONSE: \n", response_DM)
+        dict_status.validate_dict(response_DM)
+        
+        print("\n\nValidated DM Response:")
+        print(dict_status.to_json())
+        return dict_status.to_json(), dict_status.dict_status  # Returning validated JSON for further use if needed
+    except Exception as e:
+        print(f"Failed to process NLU output.")
         return None
 
+def split_intent(input_string):
+    match = re.match(r"(\w+)\((\w+)\)", input_string)
+    if match:
+        scope = match.group(1)  
+        intent = match.group(2) 
+        return scope, intent
+    else:
+        raise ValueError("La stringa non è nel formato corretto 'word1(word2)'")
+
+
+
+def check_next_best_action_and_do(DM_component_part):
+    # Check if the DM component has a "next_best_action" key
+    if "next_best_action" in DM_component_part:
+        next_best_action = DM_component_part["next_best_action"]
+        print(f"\nNext best action: {next_best_action}")    # Next best action: confirmation(album_info)
+        scope, intent = split_intent(next_best_action)
+        print(f"\n- Scope: {scope} \n- Intent: {intent}")
+        
+        # if scope == "confirmation":
+            
+        # elif scope == "request_info":
+            
+        
+    else:
+        print("\nNo next best action found in DM response.")
 
 def main():
     # Authenticate Spotify (assuming `authenticate` function handles this)
@@ -57,11 +105,25 @@ def main():
         
         print("-"*95)
         print(f"\nProcessing Input {idx}/{len(USER_INPUTS)}: \"{user_input}\"")
-        response = process_user_input(user_input)
-        while not response:
+        _, json_NLU = NLU_component_processing(user_input)
+        while not json_NLU:
             # Retry processing the same input after a failed attempt
             print("\nRetrying the same input after a failed attempt.")
-            response = process_user_input(user_input)
+            _, json_NLU = NLU_component_processing(user_input)
+
+        # pass it through DM component
+        _, json_DM = DM_component_processing(json_NLU)
+        while not json_DM:
+            # Retry processing the same input after a failed attempt
+            print("\nRetrying the same input after a failed attempt.")
+            _, json_DM = DM_component_processing(json_NLU)
+                
+        DM_component_part = json_DM.get("DM", {})
+                
+        print("\n JSON DM: ", DM_component_part)
+        
+        check_next_best_action_and_do(DM_component_part)
+        
             
     print("\nAll inputs have been processed. Exiting.")
 

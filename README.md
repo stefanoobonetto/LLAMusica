@@ -1,4 +1,4 @@
-# 🎵🐪 **Llamusica** - Spotify Chatbot using Spotify APIs and Llama3.2  
+# 🎵🐪 **LLAMusica** - Spotify Chatbot using Spotify APIs and Llama3.2  
 
 > 🎧 **Your music assistant, one conversation at a time!**
 

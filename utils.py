@@ -55,29 +55,29 @@ def generate(
         output[0][len(inputs.input_ids[0]) :], skip_special_tokens=True
     )
     
-def ask_NLU(model_query, user_input):
-    return model_query.query_model( system_prompt=PROMPT_NLU, input_file=user_input )
+def ask_NLU(model_query, input_data):
+    return model_query.query_model( system_prompt=PROMPT_NLU, input_file=input_data )
 
-def ask_DM(model_query, dict_status):
+def ask_DM(model_query, input_data):
     # Serialize the dictionary into a JSON string
-    if isinstance(dict_status, dict):
-        dict_status_str = json.dumps(dict_status, indent=2)  # Convert to JSON string for querying
-    elif isinstance(dict_status, str):
-        dict_status_str = dict_status  # Already a string
+    if isinstance(input_data, dict):
+        input_data_str = json.dumps(input_data, indent=2)  # Convert to JSON string for querying
+    elif isinstance(input_data, str):
+        input_data_str = input_data  # Already a string
     else:
-        raise ValueError("dict_status must be a dictionary or a string.")
+        raise ValueError("input_data must be a dictionary or a string.")
 
     # Pass the serialized string to `query_model`
-    return model_query.query_model(system_prompt=PROMPT_DM, input_file=dict_status_str)
+    return model_query.query_model(system_prompt=PROMPT_DM, input_file=input_data_str)
 
-def ask_NLG(model_query, dict_status):
+def ask_NLG(model_query, input_data):
     # Serialize the dictionary into a JSON string
-    if isinstance(dict_status, dict):
-        dict_status_str = json.dumps(dict_status, indent=2)  # Convert to JSON string for querying
-    elif isinstance(dict_status, str):
-        dict_status_str = dict_status  # Already a string
+    if isinstance(input_data, dict):
+        input_data_str = json.dumps(input_data, indent=2)  # Convert to JSON string for querying
+    elif isinstance(input_data, str):
+        input_data_str = input_data  # Already a string
     else:
-        raise ValueError("dict_status must be a dictionary or a string.")
+        raise ValueError("input_data must be a dictionary or a string.")
 
     # Pass the serialized string to `query_model`
-    return model_query.query_model(system_prompt=PROMPT_NLG, input_file=dict_status_str)
+    return model_query.query_model(system_prompt=PROMPT_NLG, input_file=input_data_str)

@@ -10,16 +10,6 @@ USER_INPUT = "user_input.txt"
 
 model_query = ModelQuery()
 
-def retry_with_new_instance(func, input_data, instance_generator, max_attempts=2, **kwargs):
-    for attempt in range(max_attempts):
-        try:
-            instance = instance_generator()  # Generate a fresh instance for each attempt
-            return func(instance, input_data, **kwargs)
-        except Exception as e:
-            print(f"Error during attempt {attempt + 1}/{max_attempts}: {e}")
-            if attempt + 1 == max_attempts:
-                raise  # Re-raise the last exception if all attempts fail
-
 def NLU_component_processing(user_input):
     try:
 
@@ -59,23 +49,21 @@ def DM_component_processing(response_NLU):
 def split_intent(input_string):
     match = re.match(r"(\w+)\((\w+)\)", input_string)
     if match:
-        scope = match.group(1)  
+        action = match.group(1)  
         intent = match.group(2) 
-        return scope, intent
+        return action, intent
     else:
-        raise ValueError("La stringa non è nel formato corretto 'word1(word2)'")
-
-
+        raise ValueError("Invalid input string format. Expected format: 'action(intent)'")
 
 def check_next_best_action_and_do(DM_component_part):
     # Check if the DM component has a "next_best_action" key
     if "next_best_action" in DM_component_part:
         next_best_action = DM_component_part["next_best_action"]
         print(f"\nNext best action: {next_best_action}")    # Next best action: confirmation(album_info)
-        scope, intent = split_intent(next_best_action)
-        print(f"\n- Scope: {scope} \n- Intent: {intent}")
+        action, intent = split_intent(next_best_action)
+        print(f"\n- action: {action} \n- Intent: {intent}")
         
-        if scope == "confirmation":
+        if action == "confirmation":
             if intent == "album_info":
                 print("\nAlbum info requested. Fetching album info.")
                 args = []
@@ -87,21 +75,22 @@ def check_next_best_action_and_do(DM_component_part):
                 album_info = get_album_info(*args)
                 print("\nAlbum Info:")
                 print(album_info)
-            elif intent == "artist_info":
-                print("\nArtist info requested. Fetching artist info.")
-                artist_name = DM_component_part.get("artist_name")
-                print(f"\nArtist Name: {artist_name}")
-                artist_info = get_artist_info(artist_name)
-                print("\nArtist Info:")
-                print(artist_info)
-            elif intent == "track_info":
-                print("\nTrack info requested. Fetching track info.")
-                track_name = DM_component_part.get("track_name")
-                print(f"\nTrack Name: {track_name}")
-                track_info = get_song_info(track_name)
-                print("\nTrack Info:")
-                print(track_info)    
-        elif scope == "request_info":
+            # elif intent == "artist_info":
+            #     print("\nArtist info requested. Fetching artist info.")
+            #     artist_name = DM_component_part.get("artist_name")
+            #     print(f"\nArtist Name: {artist_name}")
+            #     artist_info = get_artist_info(artist_name)
+            #     print("\nArtist Info:")
+            #     print(artist_info)
+            # elif intent == "track_info":
+            #     print("\nTrack info requested. Fetching track info.")
+            #     track_name = DM_component_part.get("track_name")
+            #     print(f"\nTrack Name: {track_name}")
+            #     track_info = get_song_info(track_name)
+            #     print("\nTrack Info:")
+            #     print(track_info)    
+        elif action == "request_info":
+            response_NLG = ask_NLG(model_query, input_data=DM_component_part)
             
             
         

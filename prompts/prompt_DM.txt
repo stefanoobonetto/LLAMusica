@@ -34,10 +34,10 @@ produce an updated JSON output following these guidelines:
     - "confirmation(intent)" and a list "args" containing what the user want to know about the intent (only in the case of info intents like song_info, artist_info, 
       album_info) or limit and time_frame values in the case of "user_top_artists" and "user_top_tracks" intents or entity_type, entity_1, entity_2 and criterion values in the 
       case of "comparison" intent. 
-      Input 1: { "song_info": { "slots": { "song_name": "Perfect", "detail": [ "duration", "genre" ] } } }
-      Output 1: { "NLU": { { "song_info": { "slots": { "song_name": "Perfect", "detail": [ "duration", "genre" ] } } } },
+      Input 1: { "song_info": { "slots": { "song_name": "Perfect", "artist_name": "Ed Sheeran", "detail": [ "duration", "genre" ] } } }
+      Output 1: { "NLU": { { "song_info": { "slots": { "song_name": "Perfect", , "artist_name": "Ed Sheeran", "detail": [ "duration", "genre" ] } } } },
                 "DM": { "next_best_action": "confirmation(song_info)", 
-                        "args": ["Perfect", "duration", "genre"] } }
+                        "args": ["Perfect", "Ed Sheeran", "duration", "genre"] } }
  
       Input 2: 
       Output 2: { "NLU": { { "user_top_tracks": { "slots": { "time_frame": "short_term", "limit": "10" } } } },
@@ -47,8 +47,8 @@ produce an updated JSON output following these guidelines:
 4. General rule:
     If a slot value is null, we will have that the next_best_action will be a request_info, otherwise it will be a confirmation. 
     e.g. 
-    Correct output: { "NLU": { "album_info": { "slots": { "album_name": "Red", "detail": [ "release_date", "total_tracks" ] } } }, "DM": { "next_best_action": "confirmation(album_info)", "args": [ "Red", "release_date", "total_tracks" ] } }
-    Wrong output (release_date is a detail, not a slot):{ "NLU": { "album_info": { "slots": { "album_name": "Red", "detail": [ "release_date", "total_tracks" ] } } }, "DM": { "next_best_action": "request_info(release_date)" } }
+    Correct output: { "NLU": { "album_info": { "slots": { "album_name": "Red", , "artist_name": "null", "detail": [ "release_date", "total_tracks" ] } } }, "DM": { "next_best_action": "request_info(album_info)", "args": [ "artist_name" ] } }
+    Wrong output (release_date is a detail, not a slot):{ "NLU": { "album_info": { "slots": { "album_name": "Red", "artist_name": "Ed Sheeran", "detail": [ "release_date", "total_tracks" ] } } }, "DM": { "next_best_action": "request_info(release_date)" } }
 
 5. Notes:
     - Ensure the output JSON is returned with no additional explanation or text.

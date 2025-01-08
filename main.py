@@ -4,8 +4,11 @@ from spotipy.oauth2 import SpotifyOAuth
 from utils import *
 from model_query import *
 from dict_manager import *
+from spoti import *
 
 USER_INPUT = "user_input.txt"
+
+model_query = ModelQuery()
 
 def retry_with_new_instance(func, input_data, instance_generator, max_attempts=2, **kwargs):
     for attempt in range(max_attempts):
@@ -19,17 +22,12 @@ def retry_with_new_instance(func, input_data, instance_generator, max_attempts=2
 
 def NLU_component_processing(user_input):
     try:
-        # Retry NLU parsing with new ModelQuery instances
-        response_NLU = retry_with_new_instance(
-            func=ask_NLU,
-            input_data=user_input,
-            instance_generator=ModelQuery,
-            max_attempts=3
-        )
 
-        # Validate the NLU response
+        response_NLU = ask_NLU(model_query, input_data=user_input)
+
         global dict_status 
         dict_status = DictManager()
+
         # print("NLU_RESPONSE: \n", response_NLU)
         dict_status.validate_dict(response_NLU)
         
@@ -46,12 +44,7 @@ def NLU_component_processing(user_input):
 def DM_component_processing(response_NLU):
     try:
         # Retry NLU parsing with new ModelQuery instances
-        response_DM = retry_with_new_instance(
-            func=ask_DM,
-            input_data=response_NLU,
-            instance_generator=ModelQuery,
-            max_attempts=3
-        )
+        response_DM = ask_DM(model_query, input_data=response_NLU)
 
         # print("DM RESPONSE: \n", response_DM)
         dict_status.validate_dict(response_DM)
@@ -82,19 +75,43 @@ def check_next_best_action_and_do(DM_component_part):
         scope, intent = split_intent(next_best_action)
         print(f"\n- Scope: {scope} \n- Intent: {intent}")
         
-        # if scope == "confirmation":
+        if scope == "confirmation":
+            if intent == "album_info":
+                print("\nAlbum info requested. Fetching album info.")
+                args = []
+                for elem in DM_component_part.get("args"):
+                    args.append(elem)
+                
+                print("\nArgs: ", args)
+                                
+                album_info = get_album_info(*args)
+                print("\nAlbum Info:")
+                print(album_info)
+            elif intent == "artist_info":
+                print("\nArtist info requested. Fetching artist info.")
+                artist_name = DM_component_part.get("artist_name")
+                print(f"\nArtist Name: {artist_name}")
+                artist_info = get_artist_info(artist_name)
+                print("\nArtist Info:")
+                print(artist_info)
+            elif intent == "track_info":
+                print("\nTrack info requested. Fetching track info.")
+                track_name = DM_component_part.get("track_name")
+                print(f"\nTrack Name: {track_name}")
+                track_info = get_song_info(track_name)
+                print("\nTrack Info:")
+                print(track_info)    
+        elif scope == "request_info":
             
-        # elif scope == "request_info":
             
         
     else:
         print("\nNo next best action found in DM response.")
 
 def main():
-    # Authenticate Spotify (assuming `authenticate` function handles this)
+
     authenticate()
 
-    # Read and parse user inputs from the file
     with open(USER_INPUT, "r") as file:
         USER_INPUTS = [line.strip() for line in file.read().split("\n\n") if line.strip()]
 

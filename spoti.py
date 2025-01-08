@@ -116,7 +116,7 @@ def authenticate(force_auth=False):
 
 #  SEARCH A GIVEN SONG AND RETURN IT OR RETURN THE DETAIL ASKED FOR
 
-def search_song(song_name, detail=None):
+def get_song_info(*args):
     """
     Search for a song on Spotify and return its details.
 
@@ -130,6 +130,12 @@ def search_song(song_name, detail=None):
         Song: An instance of the Song class with detailed information about the song.
         None: If no song is found or the query fails.
     """
+    song_name = args[0]
+    details = [args[i] for i in range(1, len(args))] if len(args) > 1 else None
+    
+    print("Song name: ", song_name)
+    print("Details: ", details)
+
     results = sp.search(q=f"track:{song_name}", type="track", limit=1)
     if results['tracks']['items']:
         track = results['tracks']['items'][0]
@@ -144,15 +150,18 @@ def search_song(song_name, detail=None):
             spotify_url=track['external_urls']['spotify'],
             preview_url=track['preview_url']
         )
-        # Return a specific detail if requested, otherwise return the Song object
-        if detail:
-            return getattr(song, detail, None)
+        # Return a specific detail/s if requested, otherwise return the Song object
+        if details and "all" not in details:
+            return_dic = {}
+            for detail in details:
+                return_dic[detail] = getattr(song, detail, None)
+            return return_dic
         return song
     return None
 
 # SEARCH A GIVEN ARTIST AND RETURN IT OR RETURN THE DETAIL ASKED FOR
 
-def search_artist(artist_name, detail=None):
+def get_artist_info(*args):
     """
     Search for an artist on Spotify and return their details.
 
@@ -166,6 +175,12 @@ def search_artist(artist_name, detail=None):
         Artist: An instance of the Artist class with detailed information about the artist.
         None: If no artist is found or the query fails.
     """
+    artist_name = args[0]
+    details = [args[i] for i in range(1, len(args))] if len(args) > 1 else None
+    
+    print("Artist name: ", artist_name)
+    print("Details: ", details)
+
     # Search for the artist using Spotify's API
     results = sp.search(q=f"artist:{artist_name}", type="artist", limit=1)
     if results['artists']['items']:
@@ -180,14 +195,17 @@ def search_artist(artist_name, detail=None):
             images=artist_data['images']
         )
         # Return a specific detail if requested, otherwise return the Artist object
-        if detail:
-            return getattr(artist, detail, None)
+        if details and "all" not in details:
+            return_dic = {}
+            for detail in details:
+                return_dic[detail] = getattr(artist, detail, None)
+            return return_dic
         return artist
     return None
 
 # SEARCH A GIVEN ALBUM AND RETURN IT OR RETURN THE DETAIL ASKED FOR
 
-def search_album(album_name, detail=None):
+def get_album_info(*args):
     """
     Search for an album on Spotify and return its details.
 
@@ -201,6 +219,12 @@ def search_album(album_name, detail=None):
         Album: An instance of the Album class with detailed information about the album.
         None: If no album is found or the query fails.
     """
+    album_name = args[0]
+    details = [args[i] for i in range(1, len(args))] if len(args) > 1 else None
+    
+    print("Album name: ", album_name)
+    print("Details: ", details)
+        
     results = sp.search(q=f"album:{album_name}", type="album", limit=1)
     if results['albums']['items']:
         album_data = results['albums']['items'][0]
@@ -214,9 +238,13 @@ def search_album(album_name, detail=None):
             spotify_url=album_data['external_urls']['spotify'],
             images=album_data['images']
         )
-        # Return a specific detail if requested, otherwise return the Album object
-        if detail:
-            return getattr(album, detail, None)
+        
+        # Return a specific detail/s if requested, otherwise return the Album object
+        if details and "all" not in details:
+            return_dic = {}
+            for detail in details:
+                return_dic[detail] = getattr(album, detail, None)
+            return return_dic
         return album
     return None
 
@@ -234,7 +262,7 @@ def get_artist_top_tracks(artist_name, country="US"):
         list[Song]: A list of Song instances representing the artist's top tracks.
         None: If the artist is not found or no tracks are available.
     """
-    artist_data = search_artist(artist_name)
+    artist_data = get_artist_info(artist_name)
     if not artist_data:
         return None
 
@@ -347,7 +375,7 @@ def get_user_top_artists(limit=10):
 # GET ARTIST'S RELATED ARTISTS
 
 def get_related_artists(artist_name):
-    artist_data = search_artist(artist_name)
+    artist_data = get_artist_info(artist_name)
     if not artist_data:
         print(f"Artista '{artist_name}' non trovato.")
         return None
@@ -416,17 +444,17 @@ def test_functions():
 
     print("\n--- TEST: Search for a Song ---")
     song_name = "Shape of You"
-    song = search_song(song_name)
+    song = get_song_info(song_name)
     print(f"Risultato per la canzone '{song_name}':\n", song if song else "Nessuna canzone trovata.")
 
     print("\n--- TEST: Search for an Artist ---")
     artist_name = "Ed Sheeran"
-    artist = search_artist(artist_name)
+    artist = get_artist_info(artist_name)
     print(f"Risultato per l'artista '{artist_name}':\n", artist if artist else "Nessun artista trovato.")
 
     print("\n--- TEST: Search for an Album ---")
     album_name = "Divide"
-    album = search_album(album_name)
+    album = get_album_info(album_name)
     print(f"Risultato per l'album '{album_name}':\n", album if album else "Nessun album trovato.")
 
     print("\n--- TEST: Get Artist's Top Tracks ---")

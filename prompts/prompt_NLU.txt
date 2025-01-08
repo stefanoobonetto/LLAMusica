@@ -8,9 +8,9 @@ Follow these rules:
                            the user input.
 
 3. Intents and Slots (every intent have to contain every slot listed in this list):
-   - song_info: {song_name, detail [popularity, release_date, duration, album, artist, genres, all]} (song_name can't be null)
+   - song_info: {song_name, artist_name, detail [popularity, release_date, duration, album, artist, genres, all]} (song_name can't be null)
    - artist_info: {artist_name, detail [followers, popularity, genres, top_tracks, all]} (artist_name can't be null)
-   - album_info: {album_name, detail [genres, release_date, total_tracks, all]} (album_name can't be null)
+   - album_info: {album_name, artist_name, detail [genres, release_date, total_tracks, all]} (album_name can't be null)
    - user_top_tracks: {time_frame [short_term, medium_term, long_term], limit} where:
         - short_term: data from approximately the past 4 weeks.
         - medium_term: data from approximately the past 6 months.
@@ -34,13 +34,13 @@ Follow these rules:
    For example:
    
    Input 1: "What are the release date and total tracks of the album Imagine by John Lennon?"
-   Correct JSON: { "NLU": { "album_info": { "slots": { "album_name": "Imagine", "detail": [ "release_date", "total_tracks" ] } } } }
+   Correct JSON: { "NLU": { "album_info": { "slots": { "album_name": "Imagine", "artist_name": "John Lennon", "detail": [ "release_date", "total_tracks" ] } } } }
    Incorrect JSON (wrong intent based on the context): { "NLU": { "song_info": { "slots": { "song_name": "Red", "detail": [ "album", "release_date" ] } } } }
 
    Do not include any additional or inferred information that is not stated in the user query. For example:
 
    Input 2 : "How many tracks does the album Divide have and what are its genres?"
-   Correct JSON: { "NLU": { "album_info": { "slots": { "album_name": "Divide", "detail": ["genres", "total_tracks"] } } } }
+   Correct JSON: { "NLU": { "album_info": { "slots": { "album_name": "Divide", "artist_name": null, "detail": ["genres", "total_tracks"] } } } }
    Incorrect JSON { "NLU": (includes inferred data such as track count): { "album_info": { "slots": { "album_name": "Divide", "detail": ["genres", "total_tracks"] }, "track_count": 12 } } }
 
    Input 3: "Show me my top artists for the past year." 
@@ -51,7 +51,7 @@ Follow these rules:
 
 JSON examples:
 - Input: "What is the release date of Shape of You?":
-  Output: { "NLU": {"song_info": {"slots": {"song_name": "Shape of You", "detail": ["release_date"] } } } }
+  Output: { "NLU": {"song_info": {"slots": {"song_name": "Shape of You", "artist_name": null, "detail": ["release_date"] } } } }
 - Input: "Compare 1989 and Reputation release dates":
   Output: { "NLU": {"comparison": {"slots": {"entity_type": "album", "entity_1": "1989", "entity_2": "Reputation", "criterion": "release_date" } } } }
 

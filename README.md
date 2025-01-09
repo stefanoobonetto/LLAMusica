@@ -1,8 +1,8 @@
-# 🎵🐪 **Llamusica** - Spotify Chatbot using Spotify APIs and Llama3.2  
+# 🎵🐪 **LLAMusica** - Spotify Chatbot using Spotify APIs and Llama3.2  
 
 > 🎧 **Your music assistant, one conversation at a time!**
 
-Llamusica is an intelligent and interactive chatbot powered by Spotify APIs and Llama3.2. It transforms the way you discover and interact with music, offering detailed insights about songs, albums, and artists—all through an engaging conversational interface.  
+LLAMusica is an intelligent and interactive chatbot powered by Spotify APIs and Llama3.2. It transforms the way you discover and interact with music, offering detailed insights about songs, albums, and artists—all through an engaging conversational interface.  
 
 ---
 
@@ -18,14 +18,8 @@ Llamusica is an intelligent and interactive chatbot powered by Spotify APIs and 
   Access tracklists, release dates, cover art, and reviews for any album.  
 
 - 🎧 **Personalization:**  
-  Get music recommendations tailored to your preferences, mood, or listening history.  
-
-- 💬 **Interactive Commands:**  
-  Use natural language like, _“Show me songs similar to Taylor Swift”_ or _“Albums released in 2023.”_  
-
-- 📱 **Cross-Platform Support:**  
-  Available on web and mobile applications for seamless access wherever you listen to music.  
-
+  Get music recommendations tailored to your preferences, mood, or listening history.
+  
 ---
 
 ## 🎯 **Objective**  
@@ -54,25 +48,6 @@ To create a seamless and engaging user experience for music lovers by combining 
 
 - **Spotify APIs** for music data  
 - **Llama3.2** for conversational intelligence  
-- **Node.js** and **Python** for backend  
-- **React** for web interface  
-- **Flutter** for mobile applications  
+- **Python** for backend  
 
 ---
-
-## 📸 **Preview**
-
-> **Screenshot or demo preview placeholder:** Add a GIF or an image showing the chatbot interface interacting with a user.
-
----
-
-## 🎤 **Get Started**  
-
-Clone the repository and start exploring Llamusica:  
-
-```bash
-git clone https://github.com/your-repo/llamusica.git
-cd llamusica
-npm install
-npm start
-```

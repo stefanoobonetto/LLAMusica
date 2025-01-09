@@ -54,5 +54,5 @@ produce an updated JSON output following these guidelines:
     - Maintain the integrity of the JSON structure and adhere to the specified format.
 
 6. Example outputs:
-    Output 1: { "NLU": { "artist_info": { "slots": { "artist_name": "The Weeknd", "detail": [ "followers", "top_tracks" ] } } }, "DM": { "next_best_action": "confirmation(artist_info)", "args": [ "The Weeknd", "followers", "top_tracks" ] } }
+    Output 1: { "NLU": { "artist_info": { "slots": { "artist_name": "The Weeknd", "detail": [ "followers", "popularity" ] } } }, "DM": { "next_best_action": "confirmation(artist_info)", "args": [ "The Weeknd", "followers", "popularity" ] } }
     Output 2: { "NLU": { "comparison": { "slots": { "entity_type": "album", "entity_1": "Fearless", "entity_2": "Speak Now", "criterion": "release_date" } } }, "DM": { "next_best_action": "confirmation("comparison)", "args": [ "album", "Fearless", "Speak Now", "release_date" ] } }

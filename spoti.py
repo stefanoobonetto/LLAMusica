@@ -37,10 +37,8 @@ class Artist:
         self.popularity = popularity
         self.spotify_url = spotify_url
         self.images = images
-        self.top_tracks = top_tracks or []  # Default to an empty list if not provided
 
     def __str__(self):
-        top_tracks_str = "\n    ".join([f"{idx + 1}. {track.name} ({track.spotify_url})" for idx, track in enumerate(self.top_tracks)]) if self.top_tracks else "N/A"
         return (
             f"Artist:\n"
             f"  Name: {self.name}\n"
@@ -48,7 +46,6 @@ class Artist:
             f"  Followers: {self.followers}\n"
             f"  Popularity: {self.popularity}\n"
             f"  Spotify URL: {self.spotify_url}\n"
-            f"  Top Tracks:\n    {top_tracks_str}"
         )
 
 
@@ -168,52 +165,46 @@ def get_song_info(*args):
 def get_artist_info(*args):
     """
     Search for an artist on Spotify and return their details, including top tracks.
-
-    Parameters:
-        artist_name (str): The name of the artist to search for.
-        detail (str, optional): Specific detail to extract from the artist information.
-                                Options: "id", "name", "genres", "followers", "popularity", 
-                                "spotify_url", "images", "top_tracks".
-
-    Returns:
-        Artist: An instance of the Artist class with detailed information about the artist.
-        None: If no artist is found or the query fails.
     """
+    if not args:
+        print("No arguments provided.")
+        return None
+
     artist_name = args[0]
-    details = [args[i] for i in range(1, len(args))] if len(args) > 1 else None
-    
+    details = args[1:] if len(args) > 1 else None
+
     print("Artist name: ", artist_name)
     print("Details: ", details)
 
-    # Search for the artist using Spotify's API
-    results = sp.search(q=f"artist:{artist_name}", type="artist", limit=1)
-    
-    if results['artists']['items']:
-        artist_data = results['artists']['items'][0]
-        
-        # Fetch top tracks for the artist
-        top_tracks = get_artist_top_tracks(artist_name)
-        
-        artist = Artist(
-            id=artist_data['id'],
-            name=artist_data['name'],
-            genres=artist_data['genres'],
-            followers=artist_data['followers']['total'],
-            popularity=artist_data['popularity'],
-            spotify_url=artist_data['external_urls']['spotify'],
-            images=artist_data['images'],
-            top_tracks=top_tracks  # Include top tracks
-        )
-        
-        # Return a specific detail if requested, otherwise return the Artist object
-        if details and "all" not in details:
-            return_dic = {}
-            for detail in details:
-                return_dic[detail] = getattr(artist, detail, None)
-            return return_dic
-        return artist
-    return None
+    try:
+        # Search for the artist using Spotify's API
+        results = sp.search(q=f"artist:{artist_name}", type="artist", limit=1)
 
+        print("\n\n\nResults: ", results)
+        
+        if results['artists']['items']:
+            artist_data = results['artists']['items'][0]
+
+            artist = Artist(
+                id=artist_data['id'],
+                name=artist_data['name'],
+                genres=artist_data['genres'],
+                followers=artist_data['followers']['total'],
+                popularity=artist_data['popularity'],
+                spotify_url=artist_data['external_urls']['spotify'],
+                images=artist_data['images']
+            )
+
+            # Return a specific detail if requested, otherwise return the Artist object
+            if details and "all" not in details:
+                return_dic = {detail: getattr(artist, detail, None) for detail in details}
+                return return_dic
+
+            return artist
+    except Exception as e:
+        print(f"Error fetching artist info: {e}")
+        return None
+    
 # SEARCH A GIVEN ALBUM AND RETURN IT OR RETURN THE DETAIL ASKED FOR
 
 def get_album_info(*args):
@@ -257,43 +248,6 @@ def get_album_info(*args):
                 return_dic[detail] = getattr(album, detail, None)
             return return_dic
         return album
-    return None
-
-# GET ARTIST'S TOP TRACKS
-
-def get_artist_top_tracks(artist_name, country="US"):
-    """
-    Fetch the top tracks of a specific artist.
-
-    Parameters:
-        artist_name (str): The name of the artist.
-        country (str, optional): The country code for market-specific top tracks. Default is "US".
-
-    Returns:
-        list[Song]: A list of Song instances representing the artist's top tracks.
-        None: If the artist is not found or no tracks are available.
-    """
-    artist_data = get_artist_info(artist_name)
-    if not artist_data:
-        return None
-
-    artist_id = artist_data.id
-    results = sp.artist_top_tracks(artist_id, country=country)
-    if results['tracks']:
-        return [
-            Song(
-                id=track['id'],
-                name=track['name'],
-                artists=[artist['name'] for artist in track['artists']],
-                album=track['album']['name'],
-                release_date=track['album']['release_date'],
-                duration_ms=track['duration_ms'],
-                popularity=track['popularity'],
-                spotify_url=track['external_urls']['spotify'],
-                preview_url=track['preview_url']
-            )
-            for track in results['tracks']
-        ]
     return None
 
 # GET NEWEST RELEASES

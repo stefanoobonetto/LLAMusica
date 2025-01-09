@@ -46,6 +46,8 @@ def DM_component_processing(response_NLU):
         print(f"Failed to process NLU output.")
         return None
 
+
+
 def split_intent(input_string):
     match = re.match(r"(\w+)\((\w+)\)", input_string)
     if match:
@@ -61,41 +63,70 @@ def get_args(DM_component_part):
         args.append(elem)
     return args
 
-def check_next_best_action_and_do(DM_component_part):
-    # Check if the DM component has a "next_best_action" key
-    if "next_best_action" in DM_component_part:
+def check_next_best_action_and_do(json_DM):
+    max_retries = 3  # Set a maximum retry limit
+    retries = 0
+    
+    DM_component_part = json_DM.get("DM", {})
+    
+    corresponding_action = {
+        "artist_info": get_artist_info,
+        "song_info": get_song_info,
+        "album_info": get_album_info,
+        "user_top_tracks": get_user_top_tracks,
+        "user_top_artists": get_user_top_artists
+    }
+
+    while "next_best_action" in DM_component_part and retries < max_retries:
+        retries += 1
         next_best_action = DM_component_part["next_best_action"]
-        print(f"\nNext best action: {next_best_action}")  # Next best action: confirmation(artist_info)
-        
+        print(f"\nNext best action: {next_best_action}")  
+
         action, intent = split_intent(next_best_action)
         print(f"\n- action: {action} \n- intent: {intent}")
-        
+
         if action == "confirmation":
-            if intent == "artist_info":
-                print("\nArtist info requested. Fetching artist info.")
+            if intent == "comparison":
+                print("not already supported")
+                # need to implement comparison function in spoti.py
+            else:
+                print(f"\n{intent} requested. Fetching...")
                 args = get_args(DM_component_part)
-                
                 if args:
-                    artist_info = get_artist_info(*args)
-                    if artist_info:
-                        print("\nArtist Info:")
-                        print(artist_info)
+                    info = corresponding_action.get(intent)(*args)
+                    if info:
+                        print(f"\Info fetched for {intent}:")
+                        print(info)
+
+                        # Mark action as completed and exit loop
+                        json_DM["DM"]["next_best_action"] = None
+                        if intent != "user_top_tracks" and intent != "user_top_artists":
+                            json_DM["GK"] = info
+                        else:
+                            json_DM["GK"] = [str(entity) for entity in info] # entity may be either an artist or a track
+                        response_NLG = ask_NLG(model_query, input_data=json_DM)
+                        print("\nNLG Response:")
+                        print(response_NLG)
+                        break
                     else:
                         print("\nFailed to fetch artist info or no data returned.")
                 else:
                     print("\nNo valid arguments provided for fetching artist info.")
-                
-                # Mark action as completed
-                DM_component_part["next_best_action"] = None
         elif action == "request_info":
-            response_NLG = ask_NLG(model_query, input_data=DM_component_part)
+            response_NLG = ask_NLG(model_query, input_data=json_DM)
             print("\nNLG Response:")
             print(response_NLG)
-            
-            # Mark action as completed
+
+            # Mark action as completed and exit loop
             DM_component_part["next_best_action"] = None
-    else:
-        print("\nNo next best action found in DM response.")
+            break
+        else:
+            print(f"\nUnsupported action: {action}.")
+
+    if retries == max_retries:
+        print("\nMax retries reached. Skipping action.")
+    
+    return 
 
 
 def main():
@@ -108,30 +139,47 @@ def main():
     print("\n\n\nWelcome to LLAMusica platform 🎧🎶!\n\n\n")
 
     # Process each user input
-    for idx, user_input in enumerate(USER_INPUTS, 1):
+    # for idx, user_input in enumerate(USER_INPUTS, 1):
         
-        print("-"*95)
-        print(f"\nProcessing Input {idx}/{len(USER_INPUTS)}: \"{user_input}\"")
-        _, json_NLU = NLU_component_processing(user_input)
-        while not json_NLU:
-            # Retry processing the same input after a failed attempt
-            print("\nRetrying the same input after a failed attempt.")
-            _, json_NLU = NLU_component_processing(user_input)
+    #     print("-"*95)
+    #     print(f"\nProcessing Input {idx}/{len(USER_INPUTS)}: \"{user_input}\"")
+    #     _, json_NLU = NLU_component_processing(user_input)
+    #     while not json_NLU:
+    #         # Retry processing the same input after a failed attempt
+    #         print("\nRetrying the same input after a failed attempt.")
+    #         _, json_NLU = NLU_component_processing(user_input)
 
-        # pass it through DM component
+    #     # pass it through DM component
+    #     _, json_DM = DM_component_processing(json_NLU)
+    #     while not json_DM:
+    #         # Retry processing the same input after a failed attempt
+    #         print("\nRetrying the same input after a failed attempt.")
+    #         _, json_DM = DM_component_processing(json_NLU)
+                                
+    #     # print("\n JSON DM: ", DM_component_part)
+        
+    #     json_DM = check_next_best_action_and_do(json_DM)
+    
+    user_input = "How many followers does The Weeknd have?" 
+    
+    print("-"*95)
+    print(f"\nProcessing Input: \"{user_input}\"")
+    _, json_NLU = NLU_component_processing(user_input)
+    while not json_NLU:
+        # Retry processing the same input after a failed attempt
+        print("\nRetrying the same input after a failed attempt.")
+        _, json_NLU = NLU_component_processing(user_input)
+
+    # pass it through DM component
+    _, json_DM = DM_component_processing(json_NLU)
+    while not json_DM:
+        # Retry processing the same input after a failed attempt
+        print("\nRetrying the same input after a failed attempt.")
         _, json_DM = DM_component_processing(json_NLU)
-        while not json_DM:
-            # Retry processing the same input after a failed attempt
-            print("\nRetrying the same input after a failed attempt.")
-            _, json_DM = DM_component_processing(json_NLU)
-                
-        DM_component_part = json_DM.get("DM", {})
-                
+                                
         # print("\n JSON DM: ", DM_component_part)
         
-        check_next_best_action_and_do(DM_component_part)
-        
-            
+    json_DM = check_next_best_action_and_do(json_DM)
     print("\nAll inputs have been processed. Exiting.")
 
 

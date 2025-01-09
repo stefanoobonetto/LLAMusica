@@ -20,8 +20,10 @@ Example inputs and expected responses:
 1. Input: { "NLU": { "artist_info": { "slots": { "artist_name": "The Weeknd", "detail": [ "followers", "top_tracks" ] } } }, "DM": { "next_best_action": "confirmation(artist_info)", "args": [ "The Weeknd", "followers", "top_tracks" ] }, "GK": { "followers": 1792883998, "top_tracks": ["Can't feel your face", "Blinding Lights", "Starboy"]} }
    Output: { "NLU": { "artist_info": { "slots": { "artist_name": "The Weeknd", "detail": [ "followers", "top_tracks" ] } } }, "DM": { "next_best_action": "confirmation(artist_info)", "args": [ "The Weeknd", "followers", "top_tracks" ] }, "GK": { "followers": 1792883998, "top_tracks": ["Can't feel your face", "Blinding Lights", "Starboy"]}, "NLG": "The Weeknd is one of the most famous artists in the whole world, with 1792883998 followers on Spotify, his top tracks are ...." } 
 2. Input: { "NLU": { "comparison": { "slots": { "entity_type": "album", "entity_1": "Fearless", "entity_2": "Speak Now", "criterion": "release_date" } } }, "DM": { "next_best_action": "confirmation("comparison)", "args": [ "album", "Fearless", "Speak Now", "release_date" ] } }
-Output: "Got it! I'll look up the artist details for you."
+   Output: {"NLU":{"comparison":{"slots":{"entity_type":"album","entity_1":"Fearless","entity_2":"Speak Now","criterion":"release_date"}}},"DM":{"next_best_action":"confirmation(comparison)","args":["album","Fearless","Speak Now","release_date"]},"GK":{"Fearless":"10-11-2008","Speak Now":"10-25-2010"},"NLG":"Taylor Swift released 'Fearless' on November 11, 2008, and 'Speak Now' on October 25, 2010, with 1 year, 11 months, and 14 days passing between the two releases."}
 
 Notes:
 - Always craft responses specific to the slots and intent involved.
 - Provide concise and polite responses aligned with the next best action.
+- Pay attention to JSON structure, it has to be rigorous because then I will fetch it and transform in a dictionary object. In particular don't forget brackets 
+  and commas.

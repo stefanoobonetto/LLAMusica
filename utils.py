@@ -24,6 +24,8 @@ TEMPLATES = {
 }
 
 PROMPT_NLU = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU.txt")
+PROMPT_NLU_intents = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_intents.txt")
+PROMPT_NLU_slots = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_slots.txt")
 PROMPT_DM = os.path.join(os.path.dirname(__file__), "prompts/prompt_DM.txt")
 PROMPT_NLG = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLG.txt")
 
@@ -59,7 +61,6 @@ def ask_NLU(model_query, input_data):
     return model_query.query_model( system_prompt=PROMPT_NLU, input_file=input_data )
 
 def ask_DM(model_query, input_data):
-    # Serialize the dictionary into a JSON string
     if isinstance(input_data, dict):
         input_data_str = json.dumps(input_data, indent=2)  # Convert to JSON string for querying
     elif isinstance(input_data, str):
@@ -67,11 +68,9 @@ def ask_DM(model_query, input_data):
     else:
         raise ValueError("input_data must be a dictionary or a string.")
 
-    # Pass the serialized string to `query_model`
     return model_query.query_model(system_prompt=PROMPT_DM, input_file=input_data_str)
 
 def ask_NLG(model_query, input_data):
-    # Serialize the dictionary into a JSON string
     if isinstance(input_data, dict):
         input_data_str = json.dumps(input_data, indent=2)  # Convert to JSON string for querying
     elif isinstance(input_data, str):
@@ -79,5 +78,4 @@ def ask_NLG(model_query, input_data):
     else:
         raise ValueError("input_data must be a dictionary or a string.")
 
-    # Pass the serialized string to `query_model`
     return model_query.query_model(system_prompt=PROMPT_NLG, input_file=input_data_str)

@@ -104,7 +104,7 @@ def authenticate(force_auth=False):
     global sp
     if force_auth:
         clear_cache()
-    print("Please log in to your Spotify account...")
+    print("\n\nPlease log in to your Spotify account...")
     sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
         client_id=CLIENT_ID,
         client_secret=CLIENT_SECRET,
@@ -112,7 +112,7 @@ def authenticate(force_auth=False):
         scope="user-library-read user-top-read playlist-read-private",
         show_dialog=force_auth
     ))
-    print("Authentication successful!")
+    print("\nAuthentication successful!\n")
     return sp
 
 #  SEARCH A GIVEN SONG AND RETURN IT OR RETURN THE DETAIL ASKED FOR
@@ -131,13 +131,20 @@ def get_song_info(*args):
         Song: An instance of the Song class with detailed information about the song.
         None: If no song is found or the query fails.
     """
-    song_name = args[0]
-    details = [args[i] for i in range(1, len(args))] if len(args) > 1 else None
+    song_name = args[0] if len(args) > 1 else None
+    artist_name = args[1] if len(args) > 2 else None
+    details = [args[i] for i in range(2, len(args))] if len(args) > 2 else None
+    
+    if details and "artist_name" in details:
+        details = ["artists" if detail == "artist_name" else detail for detail in details]
     
     print("Song name: ", song_name)
+    print("Artist name: ", artist_name)
     print("Details: ", details)
 
-    results = sp.search(q=f"track:{song_name}", type="track", limit=1)
+    song_query = f"track:{song_name} - {artist_name}" if artist_name else f"track:{song_name}"
+
+    results = sp.search(q=song_query, type="track", limit=1)
     if results['tracks']['items']:
         track = results['tracks']['items'][0]
         song = Song(
@@ -221,10 +228,16 @@ def get_album_info(*args):
         Album: An instance of the Album class with detailed information about the album.
         None: If no album is found or the query fails.
     """
+    special_keys = ["release_date", "artist_name", "limit", "time_frame", "duration", "popularity", "album", "genres", "all"]
     album_name = args[0]
-    details = [args[i] for i in range(1, len(args))] if len(args) > 1 else None
-    
+    artist_name = args[1] if args[1] not in special_keys else None
+    details = [arg for arg in args[2:] if arg in special_keys] if len(args) > 2 else [arg for arg in args[1:] if arg in special_keys]
+
+    if details and "artist_name" in details:
+        details = ["artists" if detail == "artist_name" else detail for detail in details]
+
     print("Album name: ", album_name)
+    print("Artist name: ", artist_name)
     print("Details: ", details)
         
     results = sp.search(q=f"album:{album_name}", type="album", limit=1)

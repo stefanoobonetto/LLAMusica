@@ -1,0 +1,44 @@
+Extract slots based on the provided user input and identified intents for a Spotify conversational system. Follow these rules strictly:
+
+1. Slot Templates: Use these templates for extraction:
+   - song_info: {song_name, artist_name, details} where details is a list of one or more of: [popularity, release_date, duration, album, artist, genres, all]
+   - artist_info: {artist_name, details} where details is a list of one or more of: [followers, popularity, genres, all]
+   - album_info: {album_name, artist_name, details} where details is a list of one or more of: [genres, release_date, total_tracks, all]
+   - user_top_tracks: {time_frame, limit} where time_frame can be "short_term" (1 month or less), "medium_term" (6 months or less), or "long_term" (several years or all time)
+   - user_top_artists: {time_frame, limit}
+   - comparison: {entity_type, entity_1, entity_2, criterion} where entity_type can be artist, song, or album, and criterion can be one of: [popularity, followers, release_date, total_tracks]
+   - out_of_domain: {sentence_intent}
+
+2. Explicit Slot Extraction: Extract only slots explicitly mentioned in the user input. If a slot value is not specified, set it to null. Do not infer or add information not in the input.
+
+3. Consistency: Ensure slots match their intents:
+   - Example Input: "What are the genres of the album Divide?"
+     Intent: album_info
+     Output: "album_info": {"slots": {"album_name": "Divide", "artist_name": null, "details": ["genres"]}}
+
+4. Multiple Intents: Handle multiple intents correctly:
+   - Example Input: "What are the genres of the album Divide? What is the duration of Shake It Off"
+     Intent1: album_info
+     Intent2: song_info
+     Output:
+       - "album_info": {"slots": {"album_name": "Divide", "artist_name": null, "details": ["genres"]}}
+       - "song_info": {"slots": {"song_name": "Shake It Off", "artist_name": null, "details": ["duration"]}}
+
+5. Format and Rules:
+   - Use plain text output with no comments or extra information.
+   - Example Outputs:
+     - "song_info1": {"slots": {"song_name": "Hotel California", "artist_name": null, "details": ["genres"]}}
+     - "song_info2": {"slots": {"song_name": "Imagine", "artist_name": null, "details": ["duration"]}}
+   - Avoid mistakes such as:
+     - Wrong: {"slots": {"song_name": "Hotel California", "artist_name": null, "genres": null}}
+     - Correct: {"slots": {"song_name": "Hotel California", "artist_name": null, "details": ["genres"]}}
+
+6. Details Handling: "Details" should be a flat list, not a key-value structure:
+   - Wrong: {"slots": {"song_name": "Hotel California", "artist_name": null, "genres": ["Rock", "Soft Rock"]}}
+   - Correct: {"slots": {"song_name": "Hotel California", "artist_name": null, "details": ["genres"]}}
+
+Return the output in this format:
+- <intent1>: {"slots": {<slot1>: <slot1_value>, <slot2>: <slot2_value>, ...}}
+- <intent2>: {"slots": {<slot1>: <slot1_value>, <slot2>: <slot2_value>, ...}}
+
+Ensure the output adheres to these rules exactly. No extra comments or information.

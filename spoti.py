@@ -50,13 +50,13 @@ class Artist:
 
 
 class Song:
-    def __init__(self, id, name, artists, album, release_date, duration_ms, popularity, spotify_url, preview_url):
+    def __init__(self, id, name, artists, album, release_date, duration, popularity, spotify_url, preview_url):
         self.id = id
         self.name = name
         self.artists = artists
         self.album = album
         self.release_date = release_date
-        self.duration_ms = duration_ms
+        self.duration = duration // 1000  # Convert to seconds
         self.popularity = popularity
         self.spotify_url = spotify_url
         self.preview_url = preview_url
@@ -68,7 +68,7 @@ class Song:
             f"  Artists: {', '.join(self.artists)}\n"
             f"  Album: {self.album}\n"
             f"  Release Date: {self.release_date}\n"
-            f"  Duration: {self.duration_ms // 1000}s\n"
+            f"  Duration: {self.duration}s\n"
             f"  Popularity: {self.popularity}\n"
             f"  Spotify URL: {self.spotify_url}"
         )
@@ -117,7 +117,7 @@ def authenticate(force_auth=False):
 
 #  SEARCH A GIVEN SONG AND RETURN IT OR RETURN THE DETAIL ASKED FOR
 
-def get_song_info(*args):
+def get_song_info(args):
     """
     Search for a song on Spotify and return its details.
 
@@ -131,20 +131,28 @@ def get_song_info(*args):
         Song: An instance of the Song class with detailed information about the song.
         None: If no song is found or the query fails.
     """
-    song_name = args[0] if len(args) > 1 else None
-    artist_name = args[1] if len(args) > 2 else None
-    details = [args[i] for i in range(2, len(args))] if len(args) > 2 else None
-    
+    song_name = args["song_name"] 
+    artist_name = args["artist_name"] if "artist_name" in args.keys() else None
+    details = args["details"]
+
     if details and "artist_name" in details:
         details = ["artists" if detail == "artist_name" else detail for detail in details]
-    
+
     print("Song name: ", song_name)
     print("Artist name: ", artist_name)
     print("Details: ", details)
 
-    song_query = f"track:{song_name} - {artist_name}" if artist_name else f"track:{song_name}"
-
+    # song_query = f"track:{song_name} {artist_name}" if artist_name else f"track:{song_name}"
+    song_query = f"track:{song_name}"
     results = sp.search(q=song_query, type="track", limit=1)
+
+    if artist_name:
+        while artist_name not in results['tracks']['items'][0]['artists'][0]['name']:    
+            print(f"Artist '{artist_name}' not present in {results['tracks']['items'][0]['artists'][0]['name']}, retrying...")
+            results = sp.search(q=song_query, type="track", limit=1)
+    
+    # print("\n\n\nResults: ", results)
+    
     if results['tracks']['items']:
         track = results['tracks']['items'][0]
         song = Song(
@@ -153,11 +161,13 @@ def get_song_info(*args):
             artists=[artist['name'] for artist in track['artists']],
             album=track['album']['name'],
             release_date=track['album']['release_date'],
-            duration_ms=track['duration_ms'],
+            duration=track['duration_ms'],
             popularity=track['popularity'],
             spotify_url=track['external_urls']['spotify'],
             preview_url=track['preview_url']
         )
+        
+        # print("SONG: ", song)
         # Return a specific detail/s if requested, otherwise return the Song object
         if details and "all" not in details:
             return_dic = {}
@@ -169,7 +179,7 @@ def get_song_info(*args):
 
 # SEARCH A GIVEN ARTIST AND RETURN IT OR RETURN THE DETAIL ASKED FOR
 
-def get_artist_info(*args):
+def get_artist_info(args):
     """
     Search for an artist on Spotify and return their details, including top tracks.
     """
@@ -177,8 +187,8 @@ def get_artist_info(*args):
         print("No arguments provided.")
         return None
 
-    artist_name = args[0]
-    details = args[1:] if len(args) > 1 else None
+    artist_name = args["artist_name"]
+    details = args["details"]
 
     print("Artist name: ", artist_name)
     print("Details: ", details)
@@ -214,7 +224,7 @@ def get_artist_info(*args):
     
 # SEARCH A GIVEN ALBUM AND RETURN IT OR RETURN THE DETAIL ASKED FOR
 
-def get_album_info(*args):
+def get_album_info(args):
     """
     Search for an album on Spotify and return its details.
 
@@ -227,11 +237,13 @@ def get_album_info(*args):
     Returns:
         Album: An instance of the Album class with detailed information about the album.
         None: If no album is found or the query fails.
-    """
-    special_keys = ["release_date", "artist_name", "limit", "time_frame", "duration", "popularity", "album", "genres", "all"]
-    album_name = args[0]
-    artist_name = args[1] if args[1] not in special_keys else None
-    details = [arg for arg in args[2:] if arg in special_keys] if len(args) > 2 else [arg for arg in args[1:] if arg in special_keys]
+    """    
+
+    print("ARGS: ", args)
+
+    album_name = args["album_name"] 
+    artist_name = args["artist_name"] if "artist_name" in args.keys() else None
+    details = args["details"]
 
     if details and "artist_name" in details:
         details = ["artists" if detail == "artist_name" else detail for detail in details]
@@ -257,6 +269,8 @@ def get_album_info(*args):
         # Return a specific detail/s if requested, otherwise return the Album object
         if details and "all" not in details:
             return_dic = {}
+            
+            print("\n\n\nASK for DETAILS: ", details, "\n\n\n")
             for detail in details:
                 return_dic[detail] = getattr(album, detail, None)
             return return_dic

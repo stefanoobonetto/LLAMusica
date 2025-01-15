@@ -22,18 +22,20 @@ def split_intent(input_string):
     else:
         raise ValueError("Invalid input string format. Expected format: 'action(intent)'")
 
-
-def get_args(DM_component_part):
-    args = []
-    for elem in DM_component_part.get("args"):
-        args.append(elem)
-    
-    print("\n\nExtracted Args: ", args)
-    return args
-
-
 def check_next_best_action_and_add_GK():
     DM_component_part = state_manager.state_dict.get("DM", {})
+    
+    # { "next_best_action": "confirmation(album_info)", 
+    #     "args": {
+    #         "album_name": "Red", 
+    #         "artist_name": "Taylor Swift", 
+    #         "details": ["release_date", "total_tracks"] 
+    #     } 
+    # }
+    # I want to check that if intent is "album_info" then I should have as first argument "album_name" 
+    # if intent is "song_info" then I should have as first argument "song_name"
+    # if intent is "artist_info" then I should have as first argument "artist_name"
+    
     if isinstance(DM_component_part, dict):
         # dict to a JSON string
         DM_component_part = json.dumps(DM_component_part)
@@ -64,8 +66,8 @@ def check_next_best_action_and_add_GK():
         else:
             print(f"\n{intent} requested. Fetching...")
 
-            info = corresponding_actions.get(intent)(*get_args(DM_component_part))
-
+            info = corresponding_actions.get(intent)(DM_component_part["args"])
+            
             if info:
                 print(f"\Info fetched for {intent}:")
                 print(info)
@@ -74,16 +76,16 @@ def check_next_best_action_and_add_GK():
                     info = {k.replace("artists", "artist_name"): v for k, v in info.items()}
                 
                 if intent != "user_top_tracks" and intent != "user_top_artists":
-                    state_manager.update_section("GK", {intent: info})
+                    state_manager.update_section("GK", {intent: str(info)})
                 else:
-                    state_manager.update_section("GK", {intent: [str(entity) for entity in info]}) # entity may be either an artist or a track
+                    state_manager.update_section("GK", {intent: [str(entity) for entity in info]})   # entity may be either an artist or a track
                 return state_manager.state_dict
             else:
                 print("\nFailed to fetch artist info or no data returned.")
     elif action == "request_info":
         if intent == "song_info" or intent == "album_info" or intent == "comparison":
 
-            info = corresponding_actions.get(intent)(*get_args(DM_component_part))
+            info = corresponding_actions.get(intent)(DM_component_part["args"])
             
             if info:
                 print(f"\nInfo fetched for {intent}:")
@@ -133,98 +135,128 @@ def process_NLU_intent_and_slots(user_input):
 
     slots_input, intents_extracted, state_manager.state_dict = extract_intents_build_slots_input(state_manager.state_dict, out_NLU_intents) 
     
-    out_NLU_slots = model_query.query_model(system_prompt=PROMPT_NLU_slots, input_file=slots_input)
-    
-    print("\nllama3.2 output [SLOTS]:\n", out_NLU_slots)
-    
-    for intent in intents_extracted:
-        pattern = rf'(?:- )?(?:"{intent}"|{intent}):\s*(\{{.*?\}})'
-
-        match = re.search(pattern, out_NLU_slots, re.DOTALL)
-        if match:
-            slots_content = match.group(1)
-            print("\nExtracted Slots Content: ", slots_content)
+    slots = {}
+    while slots == {}:
+        
+        print("Extracting slots...")
+        out_NLU_slots = model_query.query_model(system_prompt=PROMPT_NLU_slots, input_file=slots_input)
             
-            # Attempt to validate and correct the JSON string
-            try:
-                # Fix common issues like missing closing braces
-                if slots_content.count('{') > slots_content.count('}'):
-                    slots_content += '}'
-                slots = json.loads(slots_content)
-            except json.JSONDecodeError as e:
-                print(f"Failed to parse slots for {intent}: {e}. Slots Content: {slots_content}")
-                slots = {}
+        for intent in intents_extracted:
+            pattern = rf'(?:- )?(?:"{intent}"|{intent}).*?(\{{.*?\}})'
 
-            state_manager.update_section("NLU", {intent: slots})            
-        else:
-            print(f"No slots found for {intent} in llama3.2 output.")
+            match = re.search(pattern, out_NLU_slots, re.DOTALL)
+
+
+            if match:                
+                slots_content = match.group(1)
+                # print("\nExtracted Slots Content: ", slots_content)
+                
+                # Attempt to validate and correct the JSON string
+                try:
+                    # Fix common issues like missing closing braces
+                    if slots_content.count('{') > slots_content.count('}'):
+                        slots_content += '}'
+                    slots = json.loads(slots_content)
+                except json.JSONDecodeError as e:
+                    print(f"Failed to parse slots for {intent}: {e}. Slots Content: {slots_content}")
+                    slots = {}
+
+    print("\nllama3.2 output [SLOTS]:\n", out_NLU_slots)
+    state_manager.update_section("NLU", {intent: slots})            
+
     return state_manager.state_dict, intents_extracted
 
+def check_args(DM_component_part):
+    next_best_action = DM_component_part.get("next_best_action", "")
+    intent = re.search(r'\((.*?)\)', next_best_action).group(1)
+    print("----------> Intent extracted: ", intent)
+
+    if intent == "artist_info":
+        if "artist_name" not in DM_component_part["args"]:
+            return False
+    elif intent == "song_info":
+        if "song_name" not in DM_component_part["args"]:
+            return False
+    elif intent == "album_info":
+        if "album_name" not in DM_component_part["args"]:
+            return False
+    return True
+
+def is_valid_response(response, check_type):
+    """Check if the response is valid based on type and arguments."""
+    parsed_response = json.loads(response)
+    if check_type == "request_info":
+        return "request_info" not in response and check_args(parsed_response)
+    elif check_type == "confirmation":
+        return "confirmation" not in response and check_args(parsed_response)
+    return False
+
+def query_model_with_validation(system_prompt, state_manager):
+    # Determine the validation type
+    check_type = "request_info" if not state_manager.check_none_values() else "confirmation"
+
+    # Initial query
+    response = model_query.query_model(system_prompt=system_prompt, input_file=str(state_manager.state_dict))
+
+    # Retry until the response is valid
+    while not is_valid_response(response, check_type):
+        print(f"------------> Wrong next_best_action found [{check_type}]... retrying asking...")
+        response = model_query.query_model(system_prompt=system_prompt, input_file=str(state_manager.state_dict))
+
+    return response
+
+
 def process_DM():
-    out_DM = model_query.query_model(system_prompt=PROMPT_DM, input_file=str(state_manager.state_dict))
- 
-    if not state_manager.check_null_values():
-        while "request_info" in out_DM:
-            print("------------> Wrong next_best_action found [request_info]... retrying asking...")    
-            out_DM = model_query.query_model(system_prompt=PROMPT_DM, input_file=str(state_manager.state_dict))
-    else:
-        while "confirmation" in out_DM:
-            print("------------> Wrong next_best_action found [confirmation]... retrying asking...")    
-            out_DM = model_query.query_model(system_prompt=PROMPT_DM, input_file=str(state_manager.state_dict))
-    print("\n\n\nllama3.2 output [DM]:\n", out_DM)
-    
-    try:
-        json_pattern = r'\{.*\}'  # Match anything that starts and ends with braces
-        json_match = re.search(json_pattern, out_DM, re.DOTALL)
+    dm_data = {}
+    while dm_data == {}:
+        out_DM = query_model_with_validation(PROMPT_DM, state_manager)
+        print("Extracting DM data...")
+        
+        try:
+            json_match = re.search(r'\{.*\}', out_DM, re.DOTALL)    # Match anything that starts and ends with braces
 
-        if json_match:
-            
-            json_content = json_match.group()
-            json_content = json_content.replace("'", "\"")
-            # json_content = json_content.replace(" ", "")
-            dm_data = json.loads(json_content)
-            print("DM_data: ", dm_data)
-            if isinstance(dm_data, dict):
-                state_manager.update_section("DM", dm_data)
+            if json_match:
+                json_content = json_match.group()
+                json_content = json_content.replace("'", "\"")
+                # json_content = json_content.replace(" ", "")
+                dm_data = json.loads(json_content)
             else:
-                print("Extracted content is not a valid JSON object.")
-        else:
-            print("No valid JSON content found in DM output.")
-
-        return state_manager.state_dict
-    except json.JSONDecodeError as e:
-        print(f"Failed to parse DM output as JSON: {e}")
-    
+                print("No valid JSON content found in DM output....")
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse DM output as JSON: {e}")
+        
+    state_manager.update_section("DM", dm_data)
     return state_manager.state_dict
 
 def process_NLG():
-    out_NLG = model_query.query_model(system_prompt=PROMPT_NLG, input_file=str(state_manager.state_dict))
-    print("\n\n\nllama3.2 output [NLG]:\n\n\n", out_NLG)
-    
+    out_NLG = model_query.query_model(system_prompt=PROMPT_NLG, input_file=str(state_manager.state_dict))    
     return out_NLG
+
+
 
 if __name__ == "__main__":
     authenticate()
     
-    user_input = "When does Sconosciuti by Emma Nolde has been released?" 
+    user_input = "How lasts the song All I Want for Christmas by Mariah Carey?" 
     
     
     print("-"*95)
-    state_manager.state_dict, _ = process_NLU_intent_and_slots(user_input)
+    process_NLU_intent_and_slots(user_input)
     print("\nState Dictionary after NLU component processing:\n")
     state_manager.display()
     
     
     print("-"*95)
-    state_manager.state_dict = process_DM()
+    process_DM()
     print("\nState Dictionary after DM component processing:\n")
     state_manager.display()
     
     print("-"*95)    
     check_next_best_action_and_add_GK()
-    
-    print("\n\n\nFINAL STATE DICT WITH GK:\n\n")
+    print("\nState Dictionary after GK component processing:\n")
     state_manager.display()
     
     print("-"*95)
-    output = process_NLG()
+    out_NLG = process_NLG()
+    print("\n\n\nllama3.2 output [NLG]:\n\n", out_NLG)
+

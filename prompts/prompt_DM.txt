@@ -11,7 +11,10 @@ produce an updated JSON output following these guidelines:
     - Return a JSON object including the following elements:
         { 
           "next_best_action": ... 
-          "args" : ...
+          "args" : {
+            "<arg1>": "<arg1_value>", 
+            ...
+          }
         }
     - Pay attention to JSON structure and syntax, it has to be rigorous, in particular be careful with ',' delimiters.
 
@@ -21,13 +24,13 @@ produce an updated JSON output following these guidelines:
       If the slot missing is the artist_name of a song_info intent, it's fundamental that you add also the song_name to the list of args (like example 2). 
         1. Input: { "user_top_tracks": { "slots": { "time_frame": "short_term", "limit": null } } }
             Output: { "next_best_action": "request_info(user_top_tracks)" 
-                    "args": [ "limit" ] } 
+                    "args": { "details": [ "limit" ] } } 
         2. Input: { "NLU": { "song_info": { "slots": { "song_name": "Imagine", "artist_name": "null", "detail": [ "release_date", "duration" ] } } } }
             Output: { "next_best_action": "request_info(song_info)", 
-                    "args": [ "Imagine", "artist_name" ] }
+                    "args": { "song_name": "Imagine", "details": [ "artist_name" ] } }
         3. Input: { "NLU": { "song_info": { "slots": { "song_name": "Hotel California", "artist_name": "Eagles", "detail": [ "genres" ] } } }}
             Output: { "next_best_action": "confirmation(song_info)",
-                    "args": [ "Hotel California", "Eagles", "genres" ] } 
+                    "args": { "song_name": "Hotel California", "artist_name": "Eagles", "details": [ "genres" ] } } 
      A request_info action is required only for slots with null values, not for elements within the details list. If a slot already contains a value 
      (e.g., "artist_name": "Paul McCartney"), the request_info action will not apply to that slot.
       
@@ -37,21 +40,34 @@ produce an updated JSON output following these guidelines:
       Is FUNDAMENTAL that you remember to put the intent to confirm between brackets (e.g. confirmation(song_info)).
       Input 1: { "song_info": { "slots": { "song_name": "Perfect", "artist_name": "Ed Sheeran", "detail": [ "duration", "genre" ] } } }
       Output 1: { "next_best_action": "confirmation(song_info)", 
-                  "args": ["Perfect", "Ed Sheeran", "duration", "genre"] } 
+                  "args": {
+                    "song_name": "Perfect", 
+                    "artist_name": "Ed Sheeran", 
+                    "details": ["duration", "genre"] 
+                   }
+                } 
 
       Input 2: { "NLU": { "album_info": { "slots": { "album_name": "Red", "artist_name": "Taylor Swift", "detail": [ "release_date", "total_tracks" ] } } } }
       Output 2: { "next_best_action": "confirmation(album_info)", 
-                  "args": [ "Red", "Taylor Swift", "release_date", "total_tracks" ] } 
+                  "args": {
+                    "album_name": "Red", 
+                    "artist_name": "Taylor Swift", 
+                    "details": ["release_date", "total_tracks"] 
+                   } 
+                } 
 
 4. General rule:
     If a slot value is null, we will have that the next_best_action will be a "request_info", otherwise it will be a "confirmation". 
     
     e.g. 
     Input: { "NLU": { "album_info": { "slots": { "album_name": "Red", "artist_name": "null", "detail": [ "release_date", "total_tracks" ] } } } }
-    Correct output: { "next_best_action": "request_info(album_info)", "args": [ "Red", "artist_name" ] }
+    Correct output: { "next_best_action": "request_info(album_info)", "args": {"album_name": "Red", "details": ["artist_name" ] } }
     Wrong output (release_date is a detail, not a slot): { "next_best_action": "request_info(release_date)" } 
 
     Is IMPOSSIBLE to have as next_best_action request_info if none of the slots extracted by NLU component is null. 
+
+    If intent is album_info, artist_info or song_info, the first arg of the list in the "DM" component part will always be respectively "album_name", 
+    "artist_name" or "song_name".
 
 5. Notes:
     - Ensure the output JSON is returned with no additional explanation or text.
@@ -59,13 +75,11 @@ produce an updated JSON output following these guidelines:
     - Handle slot updates efficiently by reassessing the state of slots and the next action dynamically.
     - Maintain the integrity of the JSON structure and adhere to the specified format.
     - Make sure that all entries of the dictionary has the keys enclosed between quotation marks.
-
+    - When you get that the artist_name is null, you MUST insert in the args list the name of the song or album for which you want to find the 
+      artist_name, is FUNDAMENTAL.  
 6. Example outputs:
     Input 1: { "NLU": { "artist_info": { "slots": { "artist_name": "The Weeknd", "detail": [ "followers", "popularity" ] } } } }
-    Output 1: { "next_best_action": "confirmation(artist_info)", "args": [ "The Weeknd", "followers", "popularity" ] }
+    Output 1: { "next_best_action": "confirmation(artist_info)", "args": { "artist_name": "The Weeknd", "details": [ "followers", "popularity" ] } }
     
-    Input 2: { "NLU": { "comparison": { "slots": { "entity_type": "album", "entity_1": "Fearless", "entity_2": "Speak Now", "criterion": "release_date" } } } }
-    Output 2: { "next_best_action": "confirmation("comparison)", "args": [ "album", "Fearless", "Speak Now", "release_date" ] }
-
-    Input 3:  {'NLU': {'artist_info': {'slots': '{"artist_name": "Lil Busso"'}, 'song_info': {'slots': '{"song_name": "DIRTY NO"', 'artist_name': 'Lil Busso', 'details': ['duration']}}}}}
-    Output 3: {'next_best_action': 'confirmation(song_info)', 'args': ['DIRTY NO', , 'artist_name']}
+    Input 3:  {"NLU": {"song_info": {"slots": {"song_name": "DIRTY NO", "artist_name": "Lil Busso", "details": [ "duration" ] } } } }
+    Output 3: {"next_best_action": "confirmation(song_info)", "args": ["song_name": "DIRTY NO", "details": "artist_name"]}

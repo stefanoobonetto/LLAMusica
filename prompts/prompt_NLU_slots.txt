@@ -37,8 +37,8 @@ Extract slots based on the provided user input and identified intents for a Spot
    - Wrong: {"slots": {"song_name": "Hotel California", "artist_name": null, "genres": ["Rock", "Soft Rock"]}}
    - Correct: {"slots": {"song_name": "Hotel California", "artist_name": null, "details": ["genres"]}}
 
-Return the output in this format:
+Is FUNDAMENTAL that you return the output in this format:
 - <intent1>: {"slots": {<slot1>: <slot1_value>, <slot2>: <slot2_value>, ...}}
 - <intent2>: {"slots": {<slot1>: <slot1_value>, <slot2>: <slot2_value>, ...}}
 
-Ensure the output adheres to these rules exactly. No extra comments or information.
+Ensure the output adheres to these rules exactly. No extra comments or information. The output must remain consistent with the format mentioned above.

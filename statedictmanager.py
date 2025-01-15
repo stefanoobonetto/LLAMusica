@@ -5,8 +5,9 @@ class StateDictManager:
     def __init__(self, initial_state=None):
         self.state_dict = initial_state if initial_state else {"NLU": {}, "DM": {}, "GK": {}}
 
-    def check_null_values(self):
-        if "null" in self.state_dict.values():
+    def check_none_values(self):
+        # print("Checking for None values in state dictionary:\n\n\n\n", str(self.state_dict))
+        if "None" in str(self.state_dict):
             print("Null values found in state dictionary.")
             return True
         else:

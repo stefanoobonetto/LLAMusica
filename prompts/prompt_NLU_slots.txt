@@ -1,4 +1,8 @@
-Extract slots based on the provided user input and identified intents for a Spotify conversational system. Follow these rules strictly:
+Extract slots based on the provided user input and identified intents for a Spotify conversational system. 
+Is CRUCIAL that you extract slot values presents in the user input, but not infer any additional information about the user query:
+e.g. 
+If the user input is like "Give me the duration of Someone Like You" and he doesn't specify any artist, the slot "artist_name" will be null, not "Adele".
+Follow these rules strictly:
 
 1. Slot Templates: Use these templates for extraction:
    - song_info: {song_name, artist_name, details} where details is a list of one or more of: [popularity, release_date, duration, album, artist, genres, all]
@@ -9,12 +13,17 @@ Extract slots based on the provided user input and identified intents for a Spot
    - comparison: {entity_type, entity_1, entity_2, criterion} where entity_type can be artist, song, or album, and criterion can be one of: [popularity, followers, release_date, total_tracks]
    - out_of_domain: {sentence_intent}
 
-2. Explicit Slot Extraction: Extract only slots explicitly mentioned in the user input. If a slot value is not specified, set it to null. Do not infer or add information not in the input.
-
+2. Explicit Slot Extraction: Extract only slots explicitly mentioned in the user input. If a slot value is not specified, set it to null. 
+   Do not infer or add information not in the input.
+   
 3. Consistency: Ensure slots match their intents:
    - Example Input: "What are the genres of the album Divide?"
      Intent: album_info
      Output: "album_info": {"slots": {"album_name": "Divide", "artist_name": null, "details": ["genres"]}}
+   - Example Input: "What is the album and artist for the song Bad Guy?"
+     Intent: song_info
+     Output: "song_info": {"slots": {"song_name": "Bad Guy", "details": ["album", "artist_name"]}}
+     Notice that if the artist_name is asked, we don't have to put it as single slot, but as detail in the "details" list.
 
 4. Multiple Intents: Handle multiple intents correctly:
    - Example Input: "What are the genres of the album Divide? What is the duration of Shake It Off"

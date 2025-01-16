@@ -29,3 +29,7 @@ Is FUNDAMENTAL that you identify only the intents from the provided list, if you
     - Intent 1: "<identified intent>"
     - Intent 2: "<identified intent>"
     - ...
+
+6. Examples:
+    Input: What is the album and artist for the song Bad Guy?
+    Output: song_info 

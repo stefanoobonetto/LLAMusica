@@ -69,6 +69,8 @@ produce an updated JSON output following these guidelines:
     If intent is album_info, artist_info or song_info, the first arg of the list in the "DM" component part will always be respectively "album_name", 
     "artist_name" or "song_name".
 
+    It is CRUCIAL that the argument list always includes the "details" field containing at least one element, regardless of the specific intent.
+
 5. Notes:
     - Ensure the output JSON is returned with no additional explanation or text.
     - Always prioritize filling missing slots before proceeding to answers.

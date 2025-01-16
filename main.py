@@ -10,8 +10,8 @@ from statedictmanager import *
 USER_INPUT = "user_input.txt"
 intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "out_of_domain"]
 
-model_query = ModelQuery()
-state_manager = StateDictManager()
+# model_query = ModelQuery()
+# state_manager = StateDictManager()
 
 def split_intent(input_string):
     match = re.match(r"(\w+)\((\w+)\)", input_string)
@@ -168,17 +168,22 @@ def process_NLU_intent_and_slots(user_input):
 
 def check_args(DM_component_part):
     next_best_action = DM_component_part.get("next_best_action", "")
-    intent = re.search(r'\((.*?)\)', next_best_action).group(1)
+    match = re.search(r'\((.*?)\)', next_best_action)
+    
+    if match:
+        intent = match.group(1)
+    else:
+        return False
     print("----------> Intent extracted: ", intent)
 
     if intent == "artist_info":
-        if "artist_name" not in DM_component_part["args"]:
+        if "artist_name" not in DM_component_part["args"] or DM_component_part["args"]["artist_name"] == None or DM_component_part["args"]["artist_name"] == "null":
             return False
     elif intent == "song_info":
-        if "song_name" not in DM_component_part["args"]:
+        if "song_name" not in DM_component_part["args"] or DM_component_part["args"]["song_name"] == None or DM_component_part["args"]["song_name"] == "null":
             return False
     elif intent == "album_info":
-        if "album_name" not in DM_component_part["args"]:
+        if "album_name" not in DM_component_part["args"] or DM_component_part["args"]["album_name"] == None or DM_component_part["args"]["album_name"] == "null":
             return False
     return True
 
@@ -192,7 +197,6 @@ def is_valid_response(response, check_type):
     return False
 
 def query_model_with_validation(system_prompt, state_manager):
-    # Determine the validation type
     check_type = "request_info" if not state_manager.check_none_values() else "confirmation"
 
     # Initial query
@@ -232,31 +236,43 @@ def process_NLG():
     out_NLG = model_query.query_model(system_prompt=PROMPT_NLG, input_file=str(state_manager.state_dict))    
     return out_NLG
 
-
-
 if __name__ == "__main__":
     authenticate()
     
-    user_input = "How lasts the song All I Want for Christmas by Mariah Carey?" 
+    # user_input = "How lasts the song All I Want for Christmas by Mariah Carey?" 
     
-    
-    print("-"*95)
-    process_NLU_intent_and_slots(user_input)
-    print("\nState Dictionary after NLU component processing:\n")
-    state_manager.display()
-    
-    
-    print("-"*95)
-    process_DM()
-    print("\nState Dictionary after DM component processing:\n")
-    state_manager.display()
-    
-    print("-"*95)    
-    check_next_best_action_and_add_GK()
-    print("\nState Dictionary after GK component processing:\n")
-    state_manager.display()
-    
-    print("-"*95)
-    out_NLG = process_NLG()
-    print("\n\n\nllama3.2 output [NLG]:\n\n", out_NLG)
+    with open(USER_INPUT, "r") as file:
+        USER_INPUTS = [line.strip() for line in file.read().split("\n\n") if line.strip()]
+
+    for user_input in USER_INPUTS:
+        
+        model_query = ModelQuery()
+        
+        global state_manager
+        state_manager = StateDictManager()
+        
+        print("-"*95)
+        process_NLU_intent_and_slots(user_input)
+        print("\nState Dictionary after NLU component processing:\n")
+        state_manager.display()
+        
+        
+        print("-"*95)
+        process_DM()
+        print("\nState Dictionary after DM component processing:\n")
+        state_manager.display()
+        
+        print("-"*95)    
+        check_next_best_action_and_add_GK()
+        print("\nState Dictionary after GK component processing:\n")
+        state_manager.display()
+        
+        print("-"*95)
+        out_NLG = process_NLG()
+        print("\n\n\nllama3.2 output [NLG]:\n\n", out_NLG)
+        print("\n")
+        print("-"*95)
+        print("-"*95)
+        print("-"*95)
+        print("\n")
 

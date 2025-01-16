@@ -187,7 +187,9 @@ def get_artist_info(args):
         print("No arguments provided.")
         return None
 
-    artist_name = args["artist_name"]
+    print("\n\n-----> ARGS: ", args)
+
+    artist_name = args["artists"]
     details = args["details"]
 
     print("Artist name: ", artist_name)

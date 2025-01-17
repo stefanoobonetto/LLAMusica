@@ -124,6 +124,21 @@ def extract_intents_build_slots_input(state_dict, out_NLU_intents):
     
     return slots_input, intents_extracted, state_dict
 
+def check_slots(NLU_component):
+   for intent in NLU_component:
+        slots = NLU_component[intent].get("slots", {})
+        print(f"-----> Extracted slots for {intent}: {slots}")
+        if slots:
+            if intent == "artist_info":
+                if "artist_name" not in slots:
+                    return False
+            elif intent == "song_info":
+                if "song_name" not in slots:
+                    return False
+            elif intent == "album_info":
+                if "album_name" not in slots:
+                    return False
+
 def process_NLU_intent_and_slots(user_input):
     print("Processing Input: ", user_input)
         
@@ -138,31 +153,34 @@ def process_NLU_intent_and_slots(user_input):
     slots = {}
     while slots == {}:
         
-        print("Extracting slots...")
-        out_NLU_slots = model_query.query_model(system_prompt=PROMPT_NLU_slots, input_file=slots_input)
+        
+        slots = {}
+        while not check_slots(state_manager.state_dict["NLU"]):
+            print("Extracting slots...")
+            out_NLU_slots = model_query.query_model(system_prompt=PROMPT_NLU_slots, input_file=slots_input)
             
-        for intent in intents_extracted:
-            pattern = rf'(?:- )?(?:"{intent}"|{intent}).*?(\{{.*?\}})'
+            for intent in intents_extracted:
+                pattern = rf'(?:- )?(?:"{intent}"|{intent}).*?(\{{.*?\}})'
 
-            match = re.search(pattern, out_NLU_slots, re.DOTALL)
+                match = re.search(pattern, out_NLU_slots, re.DOTALL)
 
-
-            if match:                
-                slots_content = match.group(1)
-                # print("\nExtracted Slots Content: ", slots_content)
+                if match:                
+                    slots_content = match.group(1)
+                    print("\nExtracted Slots Content: ", slots_content, " for intent ", intent)
+                    
+                    # Attempt to validate and correct the JSON string
+                    try:
+                        # Fix common issues like missing closing braces
+                        if slots_content.count('{') > slots_content.count('}'):
+                            slots_content += '}'
+                        slots = json.loads(slots_content)
+                    except json.JSONDecodeError as e:
+                        print(f"Failed to parse slots for {intent}: {e}. Slots Content: {slots_content}")
+                        slots = {}
+                state_manager.update_section("NLU", {intent: slots})
                 
-                # Attempt to validate and correct the JSON string
-                try:
-                    # Fix common issues like missing closing braces
-                    if slots_content.count('{') > slots_content.count('}'):
-                        slots_content += '}'
-                    slots = json.loads(slots_content)
-                except json.JSONDecodeError as e:
-                    print(f"Failed to parse slots for {intent}: {e}. Slots Content: {slots_content}")
-                    slots = {}
-
     print("\nllama3.2 output [SLOTS]:\n", out_NLU_slots)
-    state_manager.update_section("NLU", {intent: slots})            
+                
 
     return state_manager.state_dict, intents_extracted
 
@@ -196,9 +214,14 @@ def is_valid_response(response, check_type):
         return "confirmation" not in response and check_args(parsed_response)
     return False
 
-def query_model_with_validation(system_prompt, state_manager):
-    check_type = "request_info" if not state_manager.check_none_values() else "confirmation"
+def query_model_with_validation(system_prompt, intents_extracted):
 
+    for intent in intents_extracted:
+        if state_manager.state_dict["NLU"][intent]["slots"]["details"]:
+            check_type = "confirmation" if any("artist_name" in state_manager.state_dict["NLU"][intent]["slots"]["details"] for intent in intents_extracted) and not state_manager.check_none_values() else "request_info"
+        elif state_manager.state_dict["NLU"][intent]["slots"]["detail"]:
+            check_type = "confirmation" if any("artist_name" in state_manager.state_dict["NLU"][intent]["slots"]["detail"] for intent in intents_extracted) and not state_manager.check_none_values() else "request_info"
+     
     # Initial query
     response = model_query.query_model(system_prompt=system_prompt, input_file=str(state_manager.state_dict))
 
@@ -210,10 +233,10 @@ def query_model_with_validation(system_prompt, state_manager):
     return response
 
 
-def process_DM():
+def process_DM(intents_extracted):
     dm_data = {}
     while dm_data == {}:
-        out_DM = query_model_with_validation(PROMPT_DM, state_manager)
+        out_DM = query_model_with_validation(PROMPT_DM, intents_extracted)
         print("Extracting DM data...")
         
         try:
@@ -237,8 +260,11 @@ def process_NLG():
     return out_NLG
 
 if __name__ == "__main__":
-    authenticate()
     
+    print("\n\n\n\nWelcome to LLAMusica platform 🎶🎧")
+    
+    authenticate()
+        
     # user_input = "How lasts the song All I Want for Christmas by Mariah Carey?" 
     
     with open(USER_INPUT, "r") as file:
@@ -252,13 +278,13 @@ if __name__ == "__main__":
         state_manager = StateDictManager()
         
         print("-"*95)
-        process_NLU_intent_and_slots(user_input)
+        _, intents_extracted = process_NLU_intent_and_slots(user_input)
         print("\nState Dictionary after NLU component processing:\n")
         state_manager.display()
         
         
         print("-"*95)
-        process_DM()
+        process_DM(intents_extracted)
         print("\nState Dictionary after DM component processing:\n")
         state_manager.display()
         

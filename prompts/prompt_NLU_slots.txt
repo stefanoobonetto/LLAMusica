@@ -10,7 +10,6 @@ Follow these rules strictly:
    - album_info: {album_name, artist_name, details} where details is a list of one or more of: [genres, release_date, total_tracks, all]
    - user_top_tracks: {time_frame, limit} where time_frame can be "short_term" (1 month or less), "medium_term" (6 months or less), or "long_term" (several years or all time)
    - user_top_artists: {time_frame, limit}
-   - comparison: {entity_type, entity_1, entity_2, criterion} where entity_type can be artist, song, or album, and criterion can be one of: [popularity, followers, release_date, total_tracks]
    - out_of_domain: {sentence_intent}
 
 2. Explicit Slot Extraction: Extract only slots explicitly mentioned in the user input. If a slot value is not specified, set it to null. 
@@ -45,6 +44,13 @@ Follow these rules strictly:
 6. Details Handling: "Details" should be a flat list, not a key-value structure:
    - Wrong: {"slots": {"song_name": "Hotel California", "artist_name": null, "genres": ["Rock", "Soft Rock"]}}
    - Correct: {"slots": {"song_name": "Hotel California", "artist_name": null, "details": ["genres"]}}
+
+7. Particular case: artist_name
+   In the case of song_info and album_info, "artist_name" can be either a single slot and an element in "details" list. It will be always a single slot, 
+   if the user wants explicitly to know the artist_name it will be added into details list:
+   - Input: "Which is the artist of the song Columbia?"
+     Output: "song_info": {"slots": {"song_name": "Columbia", "artist_name": null, "details": [ "artist_name" ]}}
+
 
 Is FUNDAMENTAL that you return the output in this format:
 - <intent1>: {"slots": {<slot1>: <slot1_value>, <slot2>: <slot2_value>, ...}}

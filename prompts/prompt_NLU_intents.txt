@@ -18,10 +18,15 @@ Is FUNDAMENTAL that you identify only the intents from the provided list, if you
             - Intent2: "song_info"
 
 3. Ambiguity Handling: Use the context to distinguish between intents. For example:
-   Input: "Tell me how many tracks does the album Divide have and which is the duration of Shape of You ."
-   Output: 
-        - Intent 1: "album_info"
-        - Intent 2: "song_info"
+        Input: "Tell me how many tracks does the album Divide have and which is the duration of Shape of You ."
+        Output: 
+            - Intent 1: "album_info"
+            - Intent 2: "song_info"
+   It is essential to handle complex cases, such as the one below, with utmost care and precision to ensure accuracy and avoid mistakes.
+        Input: "What is the artist for the song Bad Guy?"
+        Output: 
+            - Intent1: "song_info"
+        Don't put artist_info as intent in this case, the entity for which the user wants information is the song Columbia. 
 
 4. Out-of-Domain Detection: If the input does not match any of the intents, classify it as "out_of_domain" and label the input as the `sentence_intent`.
 

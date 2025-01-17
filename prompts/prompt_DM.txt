@@ -58,11 +58,17 @@ produce an updated JSON output following these guidelines:
 
 4. General rule:
     If a slot value is null, we will have that the next_best_action will be a "request_info", otherwise it will be a "confirmation". 
-    
+    The only case for which we'll have a null slot value but the next_best_action will MUST be a confirmation is when you'll find the "artist_name" in the 
+    detail list:  
     e.g. 
     Input: { "NLU": { "album_info": { "slots": { "album_name": "Red", "artist_name": "null", "detail": [ "release_date", "total_tracks" ] } } } }
     Correct output: { "next_best_action": "request_info(album_info)", "args": {"album_name": "Red", "details": ["artist_name" ] } }
     Wrong output (release_date is a detail, not a slot): { "next_best_action": "request_info(release_date)" } 
+    
+    Input: { "NLU": { "song_info": { "slots": { "song_name": "Imagine", "artist_name": "null", "detail": [ "artist_name", "release_date" ] } } } }
+    Correct output: { "next_best_action": "confirmation(song_info)", "args": {"song_name": "Red", "artist_name": "null", "details": ["artist_name", "release_date" ] } }
+    Wrong output (release_date is a detail, not a slot): { "next_best_action": "request_info(release_date)" } 
+    
 
     Is IMPOSSIBLE to have as next_best_action request_info if none of the slots extracted by NLU component is null. 
 

@@ -51,13 +51,16 @@ def extract_intents_build_slots_input(user_input, state_dict, out_NLU_intents):
     
     return slots_input, intents_extracted, state_dict
 
-def check_slots(NLU_component):
+def check_slots(NLU_component, slots):
     errors = []
     required_slots = {
         "artist_info": ["artist_name"],
         "song_info": ["song_name"],
         "album_info": ["album_name"],
     }
+
+    if slots == {}:
+        return False
 
     for intent, data in NLU_component.items():
         slots = data.get("slots", {})
@@ -168,3 +171,49 @@ def get_slot_to_update(state_dict):
         slot_to_update.append(slot)
     
     return slot_to_update
+
+def validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
+    
+    print("Validating NLU2 output...\n", out_NLU2, "\n\n\n")
+    
+    out_NLU2 = fix_json_string(out_NLU2)
+    
+    for intent in intents_extracted:
+        for slot in slot_to_update:
+            if not slot in out_NLU2["NLU"][f"{intent}"]["slots"] or out_NLU2["NLU"][f"{intent}"]["slots"][slot] in [None, "null"]:
+                return False
+    return True
+
+def build_prompt_for_NLU2(state_dict, slot_to_update):
+    prompt = (
+        "Based on that user_input and considering the following slots: \n" 
+        + str(slot_to_update) 
+        + "\n You have to update the NLU section according to the previous state_dict: \n" 
+        + str(state_dict) 
+        + "\nwith the new slots update extracted from the user input."
+        + "\nReturn the updated NLU section with the same formattation as the input one."
+        + "Is FUNDAMENTAL to update the state_dict with the new slots extracted from the user input"
+        + "Is also CRUCIAL to mantain a correct JSON formattation since it has to be fetched using json.loads."
+        + "You have to output a single dict object representing the NLU section, having a similar structure to the following example:"
+        + """
+        {
+            {
+                "NLU": {
+                    "<intent>": {
+                        "slots": {
+                            "<slot1>": "<value1>",
+                            "<slot2>": "<value2>",
+                            "details": [
+                                ...
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+        """
+        + "No additional comments or other information."
+        + "Pay attention to update completely the JSON: if the slot value required was artist_name for example, you will update it in the slot value and remove it form the details list (remember that the details list represent the query of the user, so what he wants to know)."
+    )
+    # print("PROMPT: \n\n", str(prompt))
+    return prompt

@@ -1,5 +1,5 @@
 from model_query import ModelQuery
-from utils import *                         # also infoshop 
+from utils_llama import *                         # also infoshop 
 from bin.dict_manager import DictManager
 
 

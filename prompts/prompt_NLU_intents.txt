@@ -30,11 +30,32 @@ Is FUNDAMENTAL that you identify only the intents from the provided list, if you
 
 4. Out-of-Domain Detection: If the input does not match any of the intents, classify it as "out_of_domain" and label the input as the `sentence_intent`.
 
-5. Output Format: is FUNDAMENTAL that you return the intents as plain text in the following format:
+5. Special case: if it's not the first input of the user, you won't get only the user input, but also the intent of the previous query asked by the user,
+   the name of the entity (e.g. song_name) and if available the artist_name (if the entity is a song or an album).
+    Example:
+        Input:
+            When was it released?
+            - intent: "song_info"
+            - song_name: "Wrecking Ball" 
+            - artist_name: "Miley Cyrus"
+        In this case it's easier to extract the intent by having a simple look to the data given:
+        Output: 
+            - Intent: song_info
+
+6. Output Format: is FUNDAMENTAL that you return the intents as plain text in the following format:
     - Intent 1: "<identified intent>"
     - Intent 2: "<identified intent>"
     - ...
 
-6. Examples:
-    Input: What is the album and artist for the song Bad Guy?
-    Output: song_info 
+7. Examples:
+    Input: 
+        What is the album and artist for the song Bad Guy?
+    Output: 
+        - Intent: song_info 
+
+    Input: Can you limit the results to the top 3?
+        - intent: "user_top_artists"
+        - time_frame: "medium_term"
+        - limit: 10
+    Output: 
+        - Intent: "user_top_artists" 

@@ -172,21 +172,34 @@ def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
     state_manager.empty_section("GK")
     state_manager.empty_section("NLG")
         
+# def build_input_with_history(state_dict):
+#     info_slots = {
+#         "artist_info": ["artist_name"],
+#         "song_info": ["song_name", "artist_name"],
+#         "album_info": ["album_name", "artist_name"],
+#         "user_top_tracks": ["time_frame", "limit"],
+#         "user_top_artists": ["time_frame", "limit"]
+#     }
+    
+#     state_dict[]
+    
 def run_pipeline(user_input):
     
     global state_manager, model_query
     
     state_manager = StateDictManager()
     model_query = ModelQuery()
-        
+    
+    
+    
     while True:
     
         print("-"*95)
         if state_manager.state_dict == {"NLU": {}, "DM": {}, "GK": {}}:     # initial_state        
             _, intents_extracted = process_NLU_intent_and_slots(user_input)
-        else:
-            new_input = "Referring to this query: \n", state_manager.state_dict["NLU"], ""
-            
+        # else:
+        #     new_input = build_input_with_history(state_manager.state_dict)
+
         
         print("\nState Dictionary after NLU component processing:\n")
         state_manager.display()

@@ -32,7 +32,26 @@ Follow these rules strictly:
        - "album_info": {"slots": {"album_name": "Divide", "artist_name": null, "details": ["genres"]}}
        - "song_info": {"slots": {"song_name": "Shake It Off", "artist_name": null, "details": ["duration"]}}
 
-5. Format and Rules:
+5. Special case: if it's not the first input of the user, you won't get only the user input, but also the name of the entity (e.g. song_name) and 
+if available the artist_name (if the entity is a song or an album).
+       Example:
+            Input:
+               When was it released?
+               - song_name: "Wrecking Ball" 
+               - artist_name: "Miley Cyrus"
+               - Intent: song_info
+            Output: 
+                  "song_info": {"slots": {"song_name": "Wrecking Ball", "artist_name": "Miley Cyrus", "details": ["release_date"]}}
+
+            Input: 
+               Can you limit the results to the top 3?
+               - time_frame: "medium_term"
+               - limit: 10
+               - Intent: "user_top_artists" 
+            Output:
+                  "user_top_artists": {"slots": {"time_frame": "medium_term", "limit": 3}}
+
+6. Format and Rules:
    - Use plain text output with no comments or extra information.
    - Example Outputs:
      - "song_info1": {"slots": {"song_name": "Hotel California", "artist_name": null, "details": ["genres"]}}
@@ -41,11 +60,11 @@ Follow these rules strictly:
      - Wrong: {"slots": {"song_name": "Hotel California", "artist_name": null, "genres": null}}
      - Correct: {"slots": {"song_name": "Hotel California", "artist_name": null, "details": ["genres"]}}
 
-6. Details Handling: "Details" should be a flat list, not a key-value structure:
+7. Details Handling: "Details" should be a flat list, not a key-value structure:
    - Wrong: {"slots": {"song_name": "Hotel California", "artist_name": null, "genres": ["Rock", "Soft Rock"]}}
    - Correct: {"slots": {"song_name": "Hotel California", "artist_name": null, "details": ["genres"]}}
 
-7. Particular case: artist_name
+8. Particular case: artist_name
    In the case of song_info and album_info, "artist_name" can be either a single slot and an element in "details" list. It will be always a single slot, 
    if the user wants explicitly to know the artist_name it will be added into details list:
    - Input: "Which is the artist of the song Columbia?"

@@ -16,8 +16,6 @@ List the release date and duration of the song Uptown Funk.
 
 Show me my top 5 tracks from the past month.
 
-Is the album 25 more popular than the album 1989?
-
 What is the popularity of the song Shape of You?
 
 Compare the popularity of Ed Sheeran and Justin Bieber.

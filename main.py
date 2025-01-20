@@ -10,9 +10,6 @@ USER_INPUT = "user_input.txt"
 intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "out_of_domain"]
 info_intents = ["artist_info", "song_info", "album_info"]
 
-# model_query = ModelQuery()
-# state_manager = StateDictManager()
-
 def build_GK():
     DM_component_part = state_manager.state_dict.get("DM", {})
         
@@ -22,7 +19,6 @@ def build_GK():
     
     # this substitution step is crucial since the spotify API requires the key "artists" instead of "artist_name"    
     DM_component_part = DM_component_part.replace("artist_name", "artists") 
-    
     
     DM_component_part = fix_json_string(DM_component_part)
 
@@ -232,13 +228,8 @@ def run_pipeline(user_input):
             if user_input == "no":
                 break
             
-    
-
     # the main idea is to add an intent "end_conversation" that determine when a user wants to quit his experience with llama platform
     # till now, the conversation will be stuck in this main loop. 
-
-
-
         
 if __name__ == "__main__":
     

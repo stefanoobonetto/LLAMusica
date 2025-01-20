@@ -12,6 +12,7 @@ class StateDictManager:
             return True
         else:
             return False
+        
     def validate_structure(self):
         try:
             json_string = json.dumps(self.state_dict)

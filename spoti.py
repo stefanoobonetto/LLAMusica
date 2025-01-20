@@ -133,7 +133,10 @@ def get_song_info(args):
     """
     song_name = args["song_name"] 
     artist_name = args["artist_name"] if "artist_name" in args.keys() else None
-    details = args["details"]
+    details = args["details"] if "details" in args.keys() else None
+    
+    if artist_name == None and details == None:
+        details = ["artists"]
 
     if details and "artist_name" in details:
         details = ["artists" if detail == "artist_name" else detail for detail in details]

@@ -125,19 +125,25 @@ def extract_intents_build_slots_input(state_dict, out_NLU_intents):
     return slots_input, intents_extracted, state_dict
 
 def check_slots(NLU_component):
-   for intent in NLU_component:
-        slots = NLU_component[intent].get("slots", {})
-        print(f"-----> Extracted slots for {intent}: {slots}")
-        if slots:
-            if intent == "artist_info":
-                if "artist_name" not in slots:
-                    return False
-            elif intent == "song_info":
-                if "song_name" not in slots:
-                    return False
-            elif intent == "album_info":
-                if "album_name" not in slots:
-                    return False
+    errors = []
+    required_slots = {
+        "artist_info": ["artist_name"],
+        "song_info": ["song_name"],
+        "album_info": ["album_name"],
+    }
+
+    for intent, data in NLU_component.items():
+        slots = data.get("slots", {})
+        required = required_slots.get(intent, [])
+        for slot in required:
+            if slot not in slots or not slots[slot]:
+                errors.append(f"Missing or invalid slot '{slot}' for intent '{intent}'")
+
+    if errors:
+        print("\n".join(errors))
+        return False
+    return True
+
 
 def process_NLU_intent_and_slots(user_input):
     print("Processing Input: ", user_input)
@@ -208,10 +214,13 @@ def check_args(DM_component_part):
 def is_valid_response(response, check_type):
     """Check if the response is valid based on type and arguments."""
     parsed_response = json.loads(response)
+    
+    print("DENTRO, now checking response...", parsed_response, "\nwith check type: ", check_type)
+    
     if check_type == "request_info":
-        return "request_info" not in response and check_args(parsed_response)
+        return "request_info" in response and check_args(parsed_response)
     elif check_type == "confirmation":
-        return "confirmation" not in response and check_args(parsed_response)
+        return "confirmation" in response and check_args(parsed_response)
     return False
 
 def query_model_with_validation(system_prompt, intents_extracted):
@@ -259,6 +268,9 @@ def process_NLG():
     out_NLG = model_query.query_model(system_prompt=PROMPT_NLG, input_file=str(state_manager.state_dict))    
     return out_NLG
 
+# def update_state_dict():
+    
+
 if __name__ == "__main__":
     
     print("\n\n\n\nWelcome to LLAMusica platform 🎶🎧")
@@ -298,7 +310,12 @@ if __name__ == "__main__":
         print("\n\n\nllama3.2 output [NLG]:\n\n", out_NLG)
         print("\n")
         print("-"*95)
+        
+        # update_state_dict()
+        
         print("-"*95)
         print("-"*95)
         print("\n")
+
+
 

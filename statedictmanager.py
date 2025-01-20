@@ -50,5 +50,13 @@ class StateDictManager:
         print("No valid JSON content found.")
         return None
 
+    def empty_section(self, section):
+        """Empties the contents of a specified section."""
+        if section in self.state_dict:
+            self.state_dict[section] = {}
+            print(f"Section '{section}' has been emptied.")
+        else:
+            print(f"Section '{section}' not found in state_dict.")
+
     def display(self):
         print(json.dumps(self.state_dict, indent=4))

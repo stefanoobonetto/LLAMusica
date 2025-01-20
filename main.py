@@ -43,7 +43,7 @@ def check_next_best_action_and_add_GK():
     DM_component_part = DM_component_part.replace("'", "\"")
     DM_component_part = DM_component_part.replace("artist_name", "artists")
     
-    DM_component_part = json.loads(DM_component_part)
+    DM_component_part = fix_json_string(DM_component_part)
 
     corresponding_actions = {
         "artist_info": get_artist_info,
@@ -179,7 +179,7 @@ def process_NLU_intent_and_slots(user_input):
                         # Fix common issues like missing closing braces
                         if slots_content.count('{') > slots_content.count('}'):
                             slots_content += '}'
-                        slots = json.loads(slots_content)
+                        slots = fix_json_string(slots_content)
                     except json.JSONDecodeError as e:
                         print(f"Failed to parse slots for {intent}: {e}. Slots Content: {slots_content}")
                         slots = {}
@@ -211,16 +211,32 @@ def check_args(DM_component_part):
             return False
     return True
 
-def is_valid_response(response, check_type):
+def is_valid_response(response, check_type, intents_extracted):
     """Check if the response is valid based on type and arguments."""
-    parsed_response = json.loads(response)
+    parsed_response = fix_json_string(response)  # Fix and parse the JSON response
+
+    print("Inside validation, now checking response...", parsed_response, "\nwith check type: ", check_type)
     
-    print("DENTRO, now checking response...", parsed_response, "\nwith check type: ", check_type)
+    # qua bisogna fare un check sull'intent estratto da DM per next_best_action e vedere se è user_top_tracks o user_top_artists va bene che non ci sia details    
+    next_best_action = parsed_response["next_best_action"]
+    print("Next best action: ", next_best_action)
+    match = re.search(r'\((.*?)\)', next_best_action)
+    if match:
+        intent = match.group(0)
+    
+    # Safely check if "details" exists and is not empty
+    if not parsed_response["args"].get("details"): 
+        print("Key 'details' is missing or empty in 'args'.")
+        if intent in ["user_top_tracks", "user_top_artists", "out_of_domain"]:
+            pass 
+        else:           
+            return False
     
     if check_type == "request_info":
         return "request_info" in response and check_args(parsed_response)
     elif check_type == "confirmation":
         return "confirmation" in response and check_args(parsed_response)
+    
     return False
 
 def query_model_with_validation(system_prompt, intents_extracted):
@@ -235,12 +251,11 @@ def query_model_with_validation(system_prompt, intents_extracted):
     response = model_query.query_model(system_prompt=system_prompt, input_file=str(state_manager.state_dict))
 
     # Retry until the response is valid
-    while not is_valid_response(response, check_type):
+    while not is_valid_response(response, check_type, intents_extracted):
         print(f"------------> Wrong next_best_action found [{check_type}]... retrying asking...")
         response = model_query.query_model(system_prompt=system_prompt, input_file=str(state_manager.state_dict))
 
     return response
-
 
 def process_DM(intents_extracted):
     dm_data = {}
@@ -255,7 +270,7 @@ def process_DM(intents_extracted):
                 json_content = json_match.group()
                 json_content = json_content.replace("'", "\"")
                 # json_content = json_content.replace(" ", "")
-                dm_data = json.loads(json_content)
+                dm_data = fix_json_string(json_content)
             else:
                 print("No valid JSON content found in DM output....")
         except json.JSONDecodeError as e:
@@ -266,11 +281,112 @@ def process_DM(intents_extracted):
 
 def process_NLG():
     out_NLG = model_query.query_model(system_prompt=PROMPT_NLG, input_file=str(state_manager.state_dict))    
+    state_manager.update_section("NLG", out_NLG)
     return out_NLG
 
-# def update_state_dict():
-    
+def fix_json_string(json_string):
+    """
+    Fixes and parses a malformed JSON string, ensuring it is a single dictionary object.
+    """
+    try:
+        # Step 1: Remove extraneous text outside JSON-like content
+        json_string = re.sub(r"^[^{]*", "", json_string)  # Remove anything before the first '{'
+        json_string = re.sub(r"[^}]*$", "", json_string)  # Remove anything after the last '}'
 
+        # Step 2: Replace single quotes with double quotes (only outside brackets or braces)
+        json_string = re.sub(r"(?<!\\)'", '"', json_string)  # Replace ' with "
+
+        # Step 3: Ensure keys are quoted
+        json_string = re.sub(r'(?<!")(\b\w+\b)(?=\s*:)', r'"\1"', json_string)  # Add quotes to keys
+
+        # Step 4: Merge multiple top-level dictionaries into one
+        json_string = re.sub(r"}\s*,\s*{", ", ", json_string)  # Merge separate dicts
+
+        # Step 5: Remove trailing commas
+        json_string = re.sub(r',\s*([}\]])', r'\1', json_string)  # Remove commas before } or ]
+
+        # Step 6: Ensure balanced braces
+        open_braces = json_string.count('{')
+        close_braces = json_string.count('}')
+        if open_braces > close_braces:
+            json_string += '}' * (open_braces - close_braces)
+
+        # Step 7: Parse the corrected JSON
+        return json.loads(json_string)
+    except json.JSONDecodeError as e:
+        print(f"Failed to fix JSON: {e}")
+        raise ValueError("Unable to fix and parse the JSON string.") from e
+
+def validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
+    
+    print("Validating NLU2 output...\n", out_NLU2, "\n\n\n")
+    
+    out_NLU2 = fix_json_string(out_NLU2)
+    
+    for intent in intents_extracted:
+        for slot in slot_to_update:
+            if not slot in out_NLU2["NLU"][f"{intent}"]["slots"] or out_NLU2["NLU"][f"{intent}"]["slots"][slot] in [None, "null"]:
+                return False
+    return True
+
+def check_null_slots_and_update_state_dict(out_NLU2, intents_extracted):
+    out_NLU2 = fix_json_string(out_NLU2)
+    for intent in intents_extracted:
+        for slot in out_NLU2["NLU"][f"{intent}"]["slots"]:
+            if state_manager.state_dict["NLU"][f"{intent}"]["slots"][slot] in [None, "null"]:
+                state_manager.state_dict["NLU"][f"{intent}"]["slots"][slot] = out_NLU2["NLU"][f"{intent}"]["slots"][slot]
+            
+def build_prompt_for_NLU2(input_user, slot_to_update, intents_extracted):
+    prompt = (
+        "Based on that user_input and considering the following slots: \n" 
+        + str(slot_to_update) 
+        + "\n You have to update the NLU section according to the previous state_dict: \n" 
+        + str(state_manager.state_dict) 
+        + "\nwith the new slots update extracted from the user input."
+        + "\nReturn the updated NLU section with the same formattation as the input one."
+        + "Is FUNDAMENTAL to update the state_dict with the new slots extracted from the user input"
+        + "Is also CRUCIAL to mantain a correct JSON formattation since it has to be fetched using json.loads."
+        + "You have to output a single dict object representing the NLU section, having a similar structure to the following example:"
+        + """
+        {
+            {
+                "NLU": {
+                    "<intent>": {
+                        "slots": {
+                            "<slot1>": "<value1>",
+                            "<slot2>": "<value2>",
+                            "details": [
+                                ...
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+        """
+        + "No additional comments or other information."
+        + "Pay attention to update completely the JSON: if the slot value required was artist_name for example, you will update it in the slot value and remove it form the details list (remember that the details list represent the query of the user, so what he wants to know)."
+    )
+    # print("PROMPT: \n\n", str(prompt))
+    
+    while True:
+        out_NLU2 = model_query.query_model(system_prompt=prompt, input_file=str(input_user))
+        
+        # Check the condition for continuing or exiting
+        if validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
+            break  # Exit the loop if the output is valid
+        
+    print("\n\n\nllama3.2 output [NLU2]:\n\n")
+    print(out_NLU2)
+    
+    check_null_slots_and_update_state_dict(out_NLU2, intents_extracted)
+    state_manager.empty_section("DM")
+    state_manager.empty_section("GK")
+    state_manager.empty_section("NLG")
+    
+    print("\nState Dictionary after NLU2 component processing:\n")
+    state_manager.display()
+    
 if __name__ == "__main__":
     
     print("\n\n\n\nWelcome to LLAMusica platform 🎶🎧")
@@ -307,10 +423,22 @@ if __name__ == "__main__":
         
         print("-"*95)
         out_NLG = process_NLG()
-        print("\n\n\nllama3.2 output [NLG]:\n\n", out_NLG)
-        print("\n")
-        print("-"*95)
+        print("\n\n\nllama3.2 output [NLG]:\n\n")
         
+        
+        # print("\nFinal State Dictionary:\n")
+        # state_manager.display()
+        # print("-"*95)
+        
+        input_user = input(out_NLG)
+        
+        slot_to_update = []
+        if "request_info" in state_manager.state_dict["DM"]["next_best_action"]:
+            for slot in state_manager.state_dict["DM"]["args"]["details"]:
+                slot_to_update.append(slot)
+        
+        build_prompt_for_NLU2(input_user, slot_to_update, intents_extracted)
+                
         # update_state_dict()
         
         print("-"*95)

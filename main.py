@@ -190,8 +190,6 @@ def run_pipeline(user_input):
     state_manager = StateDictManager()
     model_query = ModelQuery()
     
-    
-    
     while True:
     
         print("-"*95)

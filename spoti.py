@@ -141,9 +141,9 @@ def get_song_info(args):
     if details and "artist_name" in details:
         details = ["artists" if detail == "artist_name" else detail for detail in details]
 
-    print("Song name: ", song_name)
-    print("Artist name: ", artist_name)
-    print("Details: ", details)
+    # print("Song name: ", song_name)
+    # print("Artist name: ", artist_name)
+    # print("Details: ", details)
 
     # song_query = f"track:{song_name} {artist_name}" if artist_name else f"track:{song_name}"
     song_query = f"track:{song_name}"
@@ -190,19 +190,19 @@ def get_artist_info(args):
         print("No arguments provided.")
         return None
 
-    print("\n\n-----> ARGS: ", args)
+    # print("\n\n-----> ARGS: ", args)
 
     artist_name = args["artists"]
     details = args["details"]
 
-    print("Artist name: ", artist_name)
-    print("Details: ", details)
+    # print("Artist name: ", artist_name)
+    # print("Details: ", details)
 
     try:
         # Search for the artist using Spotify's API
         results = sp.search(q=f"artist:{artist_name}", type="artist", limit=1)
 
-        print("\n\n\nResults: ", results)
+        # print("\n\n\nResults: ", results)
         
         if results['artists']['items']:
             artist_data = results['artists']['items'][0]
@@ -253,9 +253,9 @@ def get_album_info(args):
     if details and "artist_name" in details:
         details = ["artists" if detail == "artist_name" else detail for detail in details]
 
-    print("Album name: ", album_name)
-    print("Artist name: ", artist_name)
-    print("Details: ", details)
+    # print("Album name: ", album_name)
+    # print("Artist name: ", artist_name)
+    # print("Details: ", details)
         
     results = sp.search(q=f"album:{album_name}", type="album", limit=1)
     if results['albums']['items']:
@@ -275,7 +275,7 @@ def get_album_info(args):
         if details and "all" not in details:
             return_dic = {}
             
-            print("\n\n\nASK for DETAILS: ", details, "\n\n\n")
+            # print("\n\n\nASK for DETAILS: ", details, "\n\n\n")
             for detail in details:
                 return_dic[detail] = getattr(album, detail, None)
             return return_dic

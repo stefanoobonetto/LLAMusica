@@ -38,7 +38,7 @@ class StateDictManager:
         else:
             print(f"Section '{section}' not found in state_dict, adding it.")
             self.state_dict[section] = data
-        
+            
     def extract_valid_json(self, raw_string):
         json_pattern = r'\{.*\}'
         json_match = re.search(json_pattern, raw_string, re.DOTALL)
@@ -55,9 +55,18 @@ class StateDictManager:
         """Empties the contents of a specified section."""
         if section in self.state_dict:
             self.state_dict[section] = {}
-            print(f"Section '{section}' has been emptied.")
+            # print(f"Section '{section}' has been emptied.")
         else:
             print(f"Section '{section}' not found in state_dict.")
+
+    def delete_section(self, section):
+        """Deletes a section completely from the state dictionary."""
+        if section in self.state_dict:
+            del self.state_dict[section]
+            print(f"Section '{section}' has been deleted from the state_dict.")
+        else:
+            print(f"Section '{section}' not found in state_dict. Nothing to delete.")
+            
 
     def display(self):
         print(json.dumps(self.state_dict, indent=4))

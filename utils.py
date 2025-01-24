@@ -59,14 +59,18 @@ def check_slots(NLU_component, slots):
         "album_info": ["album_name"],
     }
 
-    if slots == {}:
+    if not slots or "slots" not in slots:  # Check if 'slots' key exists
+        print("Slots data is missing or invalid.")
         return False
 
-    for intent, data in NLU_component.items():
-        slots = data.get("slots", {})
+    actual_slots = slots["slots"]  # Extract the actual slots data
+    print("NLU COMPONENT: ", NLU_component)
+    print("SLOTS: ", actual_slots)
+
+    for intent in NLU_component.keys():
         required = required_slots.get(intent, [])
         for slot in required:
-            if slot not in slots or not slots[slot]:
+            if slot not in actual_slots or not actual_slots[slot]:
                 errors.append(f"Missing or invalid slot '{slot}' for intent '{intent}'")
 
     if errors:
@@ -82,7 +86,7 @@ def check_args(DM_component_part):
         intent = match.group(1)
     else:
         return False
-    print("----------> Intent extracted: ", intent)
+    # print("----------> Intent extracted: ", intent)
 
     if intent == "artist_info":
         if "artist_name" not in DM_component_part["args"] or DM_component_part["args"]["artist_name"] == None or DM_component_part["args"]["artist_name"] == "null":
@@ -160,9 +164,14 @@ def check_null_slots_and_update_state_dict(state_dict, out_NLU2, intents_extract
     out_NLU2 = fix_json_string(out_NLU2)
     for intent in intents_extracted:
         for slot in out_NLU2["NLU"][f"{intent}"]["slots"]:
-            if state_dict["NLU"][f"{intent}"]["slots"][slot] in [None, "null"]:
+            # Controllo se lo slot non esiste affatto in state_dict
+            if slot not in state_dict["NLU"][f"{intent}"]["slots"]:
                 state_dict["NLU"][f"{intent}"]["slots"][slot] = out_NLU2["NLU"][f"{intent}"]["slots"][slot]
-    return state_dict
+            # Se lo slot esiste ma è None o "null"
+            elif state_dict["NLU"][f"{intent}"]["slots"][slot] in [None, "null"]:
+                state_dict["NLU"][f"{intent}"]["slots"][slot] = out_NLU2["NLU"][f"{intent}"]["slots"][slot]
+        state_dict["NLU"][f"{intent}"]["slots"]["details"] = out_NLU2["NLU"][f"{intent}"]["slots"]["details"]
+    return state_dict    
             
 def get_slot_to_update(state_dict):
     slot_to_update = []
@@ -185,35 +194,101 @@ def validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
     return True
 
 def build_prompt_for_NLU2(state_dict, slot_to_update):
-    prompt = (
-        "Based on that user_input and considering the following slots: \n" 
-        + str(slot_to_update) 
-        + "\n You have to update the NLU section according to the previous state_dict: \n" 
-        + str(state_dict) 
-        + "\nwith the new slots update extracted from the user input."
-        + "\nReturn the updated NLU section with the same formattation as the input one."
-        + "Is FUNDAMENTAL to update the state_dict with the new slots extracted from the user input"
-        + "Is also CRUCIAL to mantain a correct JSON formattation since it has to be fetched using json.loads."
-        + "You have to output a single dict object representing the NLU section, having a similar structure to the following example:"
-        + """
-        {
-            {
-                "NLU": {
-                    "<intent>": {
-                        "slots": {
+    # Properly escape curly braces in the JSON example using double braces {{ }}
+    prompt = f"""Based on the provided `user_input` and the following `slots`:  
+
+            {slot_to_update}  
+
+            You must update the `NLU` section according to the previous `state_dict`:  
+
+            {state_dict}  
+
+            You'll update the `state_dict` according to these rules:
+            - If the `user_input` ends with `(request_info)`, and the user confirms, update the slot value and remove it from the `details` list.  
+            - If the `user_input` ends with `(confirmation)`:
+                - If the intent seems to be the same as the `state_dict`, update the slot value using all the values found in the `GK` entry (mantaining also the old slots) and add the new elements 
+                  requested by the user to the `details` lists.
+                  Remember that details list can be filled with multiple values:
+                    - if the intent is song_info, details is a list of one or more of: [popularity, release_date, duration, album, artist, genres, all]
+                    - if the intent is artist_info, details is a list of one or more of: [followers, popularity, genres, all]
+                    - if the intent is album_info, details is a list of one or more of: [genres, release_date, total_tracks, all]
+    
+                - If the intent is different from the one provided in the `state_dict`, output simply the sentence "change_of_domain". SO if for example the intent is song_info and the user asks for 
+                  artist_info, you should output "change_of_domain". At the same manner, if in the state_dict the user asks for a song and now is asking for a second one, you should output 
+                  "change_of_domain". 
+
+            Your task is to:  
+            1. Update the `state_dict` with the new slot values extracted from the `user_input`. This is fundamental.  
+            2. Maintain the correct JSON format so that it can be parsed using `json.loads`.  
+            3. Output a single dictionary object representing the updated `NLU` section. The structure should remain consistent with the example below:
+
+            {{
+                "NLU": {{
+                    "<intent>": {{
+                        "slots": {{
                             "<slot1>": "<value1>",
                             "<slot2>": "<value2>",
                             "details": [
                                 ...
                             ]
-                        }
-                    }
-                }
-            }
-        }
-        """
-        + "No additional comments or other information."
-        + "Pay attention to update completely the JSON: if the slot value required was artist_name for example, you will update it in the slot value and remove it form the details list (remember that the details list represent the query of the user, so what he wants to know)."
-    )
+                        }}
+                    }}
+                }}
+            }}
+            
+            Remember that is CRUCIAL that you provide ONLY the updated `NLU` section or the sentence "change_of_domain", no additional information or comments. 
+            Forget all the other entries such as DM, GK, NLG, etc. jst output the updated NLU section.
+            
+            Example:
+            
+            Input: 
+            state_dict: {{
+                "NLU": {{
+                    "song_info": {{
+                        "slots": {{
+                            "song_name": "All I Want for Christmas",
+                            "artist_name": "Mariah Carey",
+                            "details": [
+                                "duration"
+                            ]
+                        }}
+                    }}
+                }},
+                "DM": {{
+                    "next_best_action": "confirmation(song_info)",
+                    "args": {{
+                        "song_name": "All I Want for Christmas",
+                        "artist_name": "Mariah Carey",
+                        "details": [
+                            "duration"
+                        ]
+                    }}
+                }},
+                "GK": {{
+                    "song_info": "{{'duration': 241}}"
+                }},
+                "NLG": "The song \"All I Want for Christmas\" by Mariah Carey lasts for approximately 4 minutes and 41 seconds. Do you want to know more about this festive classic?"
+            }}
+            slots_to_update: ["duration"]
+            
+            user_input: "When has it been released?"
+            
+            Output:
+            {{
+                "NLU": {{
+                    "song_info": {{
+                        "slots": {{
+                            "song_name": "All I Want for Christmas",
+                            "artist_name": "Mariah Carey",
+                            "duration": 241,
+                            "details": [ "release_date" ]
+                        }}
+                    }}
+                }}
+            }}
+            
+            """
+
     # print("PROMPT: \n\n", str(prompt))
+    
     return prompt

@@ -197,33 +197,43 @@ def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
     
     print("\n\n\nIntents extracted: ", intents_extracted)
     
-    if "change_of_domain" not in out_NLU2:
+    correspondences_intents = {
+        "artist_info": "artist_name",
+        "song_info": "song_name",
+        "album_info": "album_name"
+    }
+    
+    if "change_of_domain" in out_NLU2 or any(state_manager.state_dict["NLU"][intent]["slots"][correspondences_intents[intent]] not in out_NLU2 for intent in intents_extracted):
+        
+        print("\n\n\n------> Change of domain detected....")
+        state_manager.delete_section("NLU")        
+        state_manager.delete_section("DM")
+        state_manager.delete_section("GK")
+        state_manager.delete_section("NLG")
+        return False 
+    else:
         state_manager.state_dict = check_null_slots_and_update_state_dict(state_manager.state_dict, out_NLU2, intents_extracted)
         state_manager.delete_section("DM")
         state_manager.delete_section("GK")
         state_manager.delete_section("NLG")
-        return True 
-    else:
-        state_manager.delete_section("NLU")
-        state_manager.delete_section("DM")
-        state_manager.delete_section("GK")
-        state_manager.delete_section("NLG")
-        return False
+        return True
     
     
 def run_pipeline(user_input):
     
     global state_manager, model_query
     
-    state_manager = StateDictManager()
     model_query = ModelQuery()
     
     exit = False
     new_intent = False
     
     while not exit:
-    
+        
+        print("\n\n\n------> Dentro al loop + grande, valore di new_intent: ", new_intent)
         new_intent = False
+        state_manager = StateDictManager()
+
         print("-"*95)
         if state_manager.state_dict == {"NLU": {}, "DM": {}, "GK": {}}:     # initial_state        
             _, intents_extracted = process_NLU_intent_and_slots(user_input)
@@ -268,11 +278,13 @@ def run_pipeline(user_input):
                 user_input = "When has been released Imagine by John Lennon?"
                 print(out_NLG + "\n" + user_input)
                 
-                
                 result = process_NLU2(slot_to_update, build_prompt_for_NLU2(state_manager.state_dict, slot_to_update), user_input + " (confirmation)", intents_extracted)
                 
-                if not result:
+                if not result:                  # change_of_domain detected
                     new_intent = True
+                    
+                    print("Entratoooooooooooooooooo")
+                    
                     print("\n\nNew intent detected. Exiting the current loop...\n\n")
                     print("-"*95)
                     print("-"*95)

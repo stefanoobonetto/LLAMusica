@@ -64,8 +64,8 @@ def check_slots(NLU_component, slots):
         return False
 
     actual_slots = slots["slots"]  # Extract the actual slots data
-    print("NLU COMPONENT: ", NLU_component)
-    print("SLOTS: ", actual_slots)
+    # print("NLU COMPONENT: ", NLU_component)
+    # print("SLOTS: ", actual_slots)
 
     for intent in NLU_component.keys():
         required = required_slots.get(intent, [])
@@ -195,100 +195,15 @@ def validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
 
 def build_prompt_for_NLU2(state_dict, slot_to_update):
     # Properly escape curly braces in the JSON example using double braces {{ }}
-    prompt = f"""Based on the provided `user_input` and the following `slots`:  
-
-            {slot_to_update}  
-
-            You must update the `NLU` section according to the previous `state_dict`:  
-
-            {state_dict}  
-
-            You'll update the `state_dict` according to these rules:
-            - If the `user_input` ends with `(request_info)`, and the user confirms, update the slot value and remove it from the `details` list.  
-            - If the `user_input` ends with `(confirmation)`:
-                - If the intent seems to be the same as the `state_dict`, update the slot value using all the values found in the `GK` entry (mantaining also the old slots) and add the new elements 
-                  requested by the user to the `details` lists.
-                  Remember that details list can be filled with multiple values:
-                    - if the intent is song_info, details is a list of one or more of: [popularity, release_date, duration, album, artist, genres, all]
-                    - if the intent is artist_info, details is a list of one or more of: [followers, popularity, genres, all]
-                    - if the intent is album_info, details is a list of one or more of: [genres, release_date, total_tracks, all]
     
-                - If the intent is different from the one provided in the `state_dict`, output simply the sentence "change_of_domain". SO if for example the intent is song_info and the user asks for 
-                  artist_info, you should output "change_of_domain". At the same manner, if in the state_dict the user asks for a song and now is asking for a second one, you should output 
-                  "change_of_domain". 
-
-            Your task is to:  
-            1. Update the `state_dict` with the new slot values extracted from the `user_input`. This is fundamental.  
-            2. Maintain the correct JSON format so that it can be parsed using `json.loads`.  
-            3. Output a single dictionary object representing the updated `NLU` section. The structure should remain consistent with the example below:
-
-            {{
-                "NLU": {{
-                    "<intent>": {{
-                        "slots": {{
-                            "<slot1>": "<value1>",
-                            "<slot2>": "<value2>",
-                            "details": [
-                                ...
-                            ]
-                        }}
-                    }}
-                }}
-            }}
-            
-            Remember that is CRUCIAL that you provide ONLY the updated `NLU` section or the sentence "change_of_domain", no additional information or comments. 
-            Forget all the other entries such as DM, GK, NLG, etc. jst output the updated NLU section.
-            
-            Example:
-            
-            Input: 
-            state_dict: {{
-                "NLU": {{
-                    "song_info": {{
-                        "slots": {{
-                            "song_name": "All I Want for Christmas",
-                            "artist_name": "Mariah Carey",
-                            "details": [
-                                "duration"
-                            ]
-                        }}
-                    }}
-                }},
-                "DM": {{
-                    "next_best_action": "confirmation(song_info)",
-                    "args": {{
-                        "song_name": "All I Want for Christmas",
-                        "artist_name": "Mariah Carey",
-                        "details": [
-                            "duration"
-                        ]
-                    }}
-                }},
-                "GK": {{
-                    "song_info": "{{'duration': 241}}"
-                }},
-                "NLG": "The song \"All I Want for Christmas\" by Mariah Carey lasts for approximately 4 minutes and 41 seconds. Do you want to know more about this festive classic?"
-            }}
-            slots_to_update: ["duration"]
-            
-            user_input: "When has it been released?"
-            
-            Output:
-            {{
-                "NLU": {{
-                    "song_info": {{
-                        "slots": {{
-                            "song_name": "All I Want for Christmas",
-                            "artist_name": "Mariah Carey",
-                            "duration": 241,
-                            "details": [ "release_date" ]
-                        }}
-                    }}
-                }}
-            }}
-            
-            """
-
-    # print("PROMPT: \n\n", str(prompt))
+    PROMPT_NLU2_TEMPLATE = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU2_template.txt")
+    prefix = "slot_to_update: " + str(slot_to_update) + "\nstate_dict: \n" + str(state_dict)
     
+    with open(PROMPT_NLU2_TEMPLATE, "r") as file:
+        template = file.read()
+    
+    prompt = prefix + "\n\n" + template
+    
+    # print("PROMPT: \n\n", str(prompt)) 
+
     return prompt

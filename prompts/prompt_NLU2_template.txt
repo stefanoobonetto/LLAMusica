@@ -1,0 +1,43 @@
+Based on the provided `user_input` and `slots_to_update` you must update the `NLU` section according to the previous `state_dict` provided as input.  
+
+Rules for updating the `state_dict`:
+1. If the `user_input` ends with `(request_info)` and the user confirms, update the slot value and remove it from the `details` list.  
+2. If the `user_input` ends with `(confirmation)`:
+   - If the intent is the same as the one in the `state_dict`:
+     - Update the slot value using all the values found in the `GK` entry (while keeping the old slots intact).  
+     - Add any new elements requested by the user to the `details` list.  
+     - Remember: `details` can contain multiple values:
+       - If the intent is `song_info`, `details` is a list of one or more of: [popularity, release_date, duration, album, artist, genres, all].
+       - If the intent is `artist_info`, `details` is a list of one or more of: [followers, popularity, genres, all].
+       - If the intent is `album_info`, `details` is a list of one or more of: [genres, release_date, total_tracks, all].
+
+   - If the intent in the `user_input` is different from the intent in the `state_dict`, output only the sentence: "change_of_domain". Examples include:
+     - If the `state_dict` intent is a `song_info` for a song A, and the user now asks for information about another song B, output "change_of_domain".
+     - If the `state_dict` intent is `song_info` for one song, and the user now requests information about an artist or album, output "change_of_domain".
+     - If the `state_dict` intent is `artist_info` for artist A, and the user now asks about artist B, output "change_of_domain".
+     - If the `state_dict` intent is `album_info` for album A, and the user now asks about album B, output "change_of_domain".
+
+3. Your task is to:
+   - Update the `state_dict` with the new slot values extracted from the `user_input`.
+   - Maintain the correct JSON format so that it can be parsed using `json.loads`.
+
+4. Output only:
+   - The updated `NLU` section in JSON format, like this, update the one provided as input, maintaining only the NLU entry updating slot_to_update:
+
+        {
+            "NLU": {
+                "<intent>": {
+                    "slots": {
+                        "<slot1>": "<value1>",
+                        "<slot2>": "<value2>",
+                        "details": [
+                            ...
+                        ]
+                    }
+                }
+            }
+        }
+
+   - Or the sentence "change_of_domain" if the domain changes. Do not output anything else.
+
+5. If the user changes topic (e.g. asks for other songs, artists or albums), it is FUNDAMENTAL that you DO NOT attempt to rebuild the `state_dict` for the new query. If the intent changes—simply output "change_of_domain".

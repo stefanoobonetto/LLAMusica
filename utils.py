@@ -92,10 +92,14 @@ def check_args(DM_component_part):
         if "artist_name" not in DM_component_part["args"] or DM_component_part["args"]["artist_name"] == None or DM_component_part["args"]["artist_name"] == "null":
             return False
     elif intent == "song_info":
-        if "song_name" not in DM_component_part["args"] or DM_component_part["args"]["song_name"] == None or DM_component_part["args"]["song_name"] == "null":
+        if "song_name" not in DM_component_part["args"] or DM_component_part["args"]["song_name"] in [None, "null"]:
+            return False
+        if "artist_name" in DM_component_part["args"] and DM_component_part["args"]["artist_name"] in [None, "null"] and "artist_name" not in DM_component_part["args"]["details"]:
             return False
     elif intent == "album_info":
-        if "album_name" not in DM_component_part["args"] or DM_component_part["args"]["album_name"] == None or DM_component_part["args"]["album_name"] == "null":
+        if "album_name" not in DM_component_part["args"] or DM_component_part["args"]["album_name"] in [None, "null"]:
+            return False
+        if "artist_name" in DM_component_part["args"] and DM_component_part["args"]["artist_name"] in [None, "null"] and "artist_name" not in DM_component_part["args"]["details"]:
             return False
     return True
 
@@ -111,27 +115,30 @@ def fix_json_string(json_string):
         # Step 2: Replace single quotes with double quotes (only outside brackets or braces)
         json_string = re.sub(r"(?<!\\)'", '"', json_string)  # Replace ' with "
 
-        # Step 3: Ensure keys are quoted
+        # Step 3: Replace Python-specific keywords with JSON equivalents
+        json_string = json_string.replace("None", "null").replace("True", "true").replace("False", "false")
+
+        # Step 4: Ensure keys are quoted
         json_string = re.sub(r'(?<!")(\b\w+\b)(?=\s*:)', r'"\1"', json_string)  # Add quotes to keys
 
-        # Step 4: Merge multiple top-level dictionaries into one
+        # Step 5: Merge multiple top-level dictionaries into one
         json_string = re.sub(r"}\s*,\s*{", ", ", json_string)  # Merge separate dicts
 
-        # Step 5: Remove trailing commas
+        # Step 6: Remove trailing commas
         json_string = re.sub(r',\s*([}\]])', r'\1', json_string)  # Remove commas before } or ]
 
-        # Step 6: Ensure balanced braces
+        # Step 7: Ensure balanced braces
         open_braces = json_string.count('{')
         close_braces = json_string.count('}')
         if open_braces > close_braces:
             json_string += '}' * (open_braces - close_braces)
 
-        # Step 7: Parse the corrected JSON
+        # Step 8: Parse the corrected JSON
         return json.loads(json_string)
     except json.JSONDecodeError as e:
         print(f"Failed to fix JSON: {e}")
-        raise ValueError("Unable to fix and parse the JSON string.") from e
-
+        return False
+    
 def is_valid_response(response, check_type):
     """Check if the response is valid based on type and arguments."""
     parsed_response = fix_json_string(response)  # Fix and parse the JSON response
@@ -185,11 +192,21 @@ def validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
     
     print("Validating NLU2 output...\n", out_NLU2, "\n\n\n")
     
+    if "change_of_intent" in out_NLU2:
+        return True
+    
     out_NLU2 = fix_json_string(out_NLU2)
+    
+    if not out_NLU2:
+        return False
     
     for intent in intents_extracted:
         for slot in slot_to_update:
-            if not slot in out_NLU2["NLU"][f"{intent}"]["slots"] or out_NLU2["NLU"][f"{intent}"]["slots"][slot] in [None, "null"]:
+            if "slots" not in out_NLU2["NLU"][f"{intent}"] or not slot in out_NLU2["NLU"][f"{intent}"]["slots"] or out_NLU2["NLU"][f"{intent}"]["slots"][slot] in [None, "null"]:
+                return False
+            if "details" not in out_NLU2["NLU"][f"{intent}"]["slots"]:
+                return False
+            if "NLG" in out_NLU2 or "DM" in out_NLU2 or "GK" in out_NLU2:
                 return False
     return True
 

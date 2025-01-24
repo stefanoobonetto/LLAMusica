@@ -1,7 +1,8 @@
 Based on the provided `user_input` and `slots_to_update` you must update the `NLU` section according to the previous `state_dict` provided as input.  
 
 Rules for updating the `state_dict`:
-1. If the `user_input` ends with `(request_info)` and the user confirms, update the slot value and remove it from the `details` list.  
+1. If the `user_input` ends with `(request_info)` and the user confirms, update the state_dict according to the user_input (and the information found in the GK entry) and remove it 
+   from the `details` list. 
 2. If the `user_input` ends with `(confirmation)`:
    - If the intent is the same as the one in the `state_dict`:
      - Update the slot value using all the values found in the `GK` entry (while keeping the old slots intact).  

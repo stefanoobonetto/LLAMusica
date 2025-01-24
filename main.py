@@ -121,14 +121,8 @@ def query_DM_model_with_validation(system_prompt, intents_extracted):
 
     for intent in intents_extracted:
         if state_manager.state_dict["NLU"][intent]["slots"]["details"]:
-            # print("\n\nCheck none values: ", not state_manager.check_none_values())
-            # print("\n\nartist_name? : ", any("artist_name" in state_manager.state_dict["NLU"][intent]["slots"]["details"] for intent in intents_extracted))
             check_type = "request_info" if any("artist_name" in state_manager.state_dict["NLU"][intent]["slots"]["details"] for intent in intents_extracted) or state_manager.check_none_values() else "confirmation"
-        # elif state_manager.state_dict["NLU"][intent]["slots"]["detail"]:
-        #     check_type = "confirmation" if any("artist_name" in state_manager.state_dict["NLU"][intent]["slots"]["detail"] for intent in intents_extracted) and not state_manager.check_none_values() else "request_info"
-
-        # print("\n\n------> Check type extracted: ", check_type, "\n\n")
-        
+                
     while True:
         response = model_query.query_model(system_prompt=system_prompt, input_file=str(state_manager.state_dict))
         if is_valid_response(response, check_type):
@@ -182,10 +176,9 @@ def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
             break  # Exit the loop if the output is valid
         
         # Check the condition for continuing or exiting (confirmation)
-        if "(confirmation)" in user_input:
+        if "(confirmation)" in user_input and validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
             print("\n\n----> confirmation in NLU2 output detected... validated user_input...exiting...")
             break  # Exit the loop if the output is valid
-        
         print("Invalid NLU2 output detected... retrying...")
         
     # print("\n\n\nllama3.2 output [NLU2]:\n\n")
@@ -195,7 +188,7 @@ def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
     # if the output is "change_of_domain" return False
     
     
-    print("\n\n\nIntents extracted: ", intents_extracted)
+    # print("\n\n\nIntents extracted: ", intents_extracted)
     
     correspondences_intents = {
         "artist_info": "artist_name",
@@ -204,7 +197,6 @@ def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
     }
     
     if "change_of_domain" in out_NLU2 or any(state_manager.state_dict["NLU"][intent]["slots"][correspondences_intents[intent]] not in out_NLU2 for intent in intents_extracted):
-        
         print("\n\n\n------> Change of domain detected....")
         state_manager.delete_section("NLU")        
         state_manager.delete_section("DM")
@@ -218,7 +210,12 @@ def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
         state_manager.delete_section("NLG")
         return True
     
-    
+def final_check_NLU(intents_extracted):
+    for intent in intents_extracted:
+        if "details" not in state_manager.state_dict["NLU"][intent]["slots"]:
+            del state_manager.state_dict["NLU"][intent]
+            print("\n\n\n------> No details found for ", intent, " intent. Deleting it from the state_dict...")
+            
 def run_pipeline(user_input):
     
     global state_manager, model_query
@@ -230,7 +227,7 @@ def run_pipeline(user_input):
     
     while not exit:
         
-        print("\n\n\n------> Dentro al loop + grande, valore di new_intent: ", new_intent)
+        # print("\n\n\n------> Dentro al loop + grande, valore di new_intent: ", new_intent)
         new_intent = False
         state_manager = StateDictManager()
 
@@ -240,10 +237,14 @@ def run_pipeline(user_input):
         # else:
         #     new_input = build_input_with_history(state_manager.state_dict)
 
+        final_check_NLU(intents_extracted)
+
         while not new_intent and not exit:
-        
+            
             print("\nState Dictionary after NLU component processing:\n")
             state_manager.display()
+            
+            
             
             print("-"*95)
             process_DM(intents_extracted)
@@ -274,16 +275,16 @@ def run_pipeline(user_input):
                 # here we should repass it through the DM component to arrive till a confirmation next_best_action
                 
             elif get_current_action(state_manager.state_dict) == "confirmation":
-                # user_input = input(out_NLG + "\n")
-                user_input = "When has been released Imagine by John Lennon?"
-                print(out_NLG + "\n" + user_input)
+                user_input = input(out_NLG + "\n")
+                # user_input = "When has been released Imagine by John Lennon?"
+                # print(out_NLG + "\n" + user_input)
                 
                 result = process_NLU2(slot_to_update, build_prompt_for_NLU2(state_manager.state_dict, slot_to_update), user_input + " (confirmation)", intents_extracted)
                 
                 if not result:                  # change_of_domain detected
                     new_intent = True
                     
-                    print("Entratoooooooooooooooooo")
+                    # print("Entratoooooooooooooooooo")
                     
                     print("\n\nNew intent detected. Exiting the current loop...\n\n")
                     print("-"*95)
@@ -304,7 +305,7 @@ if __name__ == "__main__":
     
     authenticate()
         
-    user_input = "How lasts the song Blinding Lights by The Weeknd?" 
+    user_input = "How lasts the song Blinding Lights?"      # by The Weeknd 
     run_pipeline(user_input)
     
     # with open(USER_INPUT, "r") as file:

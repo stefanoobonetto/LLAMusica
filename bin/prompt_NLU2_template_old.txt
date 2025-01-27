@@ -1,0 +1,111 @@
+Your task is to update the `NLU` section of the provided `state_dict` based on the `user_input` and `slots_to_update`, following these specific rules:
+
+Rules for updating the `state_dict`:
+
+1. For `user_input` ending with `(request_info)` and user confirms:
+   - If the user confirms the information (e.g., responds "Yes"), update the `state_dict` with the values found in the `GK` entry for the specified `slots_to_update`.
+   - Remove the corresponding value from the `details` list.
+   - Example:
+     Input:
+       state_dict:
+       {
+           "NLU": {
+               "song_info": {
+                   "slots": {
+                       "song_name": "Blinding Lights",
+                       "artist_name": null,
+                       "details": [
+                           "duration"
+                       ]
+                   }
+               }
+           },
+           "DM": {...},
+           "GK": {"artist_name": "The Weeknd"},
+           "NLG": {"Did you mean Blinding Lights by The Weeknd?"}
+       }
+
+       slots_to_update:
+       ["artist_name"]
+
+       user_input:
+       "Yes"
+
+     Output:
+       {
+           "NLU": {
+               "song_info": {
+                   "slots": {
+                       "song_name": "Blinding Lights",
+                       "artist_name": "The Weeknd",
+                       "details": [
+                           "duration"
+                       ]
+                   }
+               }
+           }
+       }
+
+2. For `user_input` ending with `(confirmation)`:
+   - If the intent matches the current intent in the `state_dict`:
+     - Update slot values using all the values found in the `GK` entry while keeping the existing slots intact.
+     - Add any new elements requested by the user to the `details` list.
+     - The `details` list can include multiple values based on the intent:
+       - For `song_info`: [popularity, release_date, duration, album, artist, genres, all].
+       - For `artist_info`: [followers, popularity, genres, all].
+       - For `album_info`: [genres, release_date, total_tracks, all].
+     - Example:
+       Input:
+         state_dict:
+         {
+             "NLU": {
+                 "song_info": {
+                     "slots": {
+                         "song_name": "Blinding Lights",
+                         "artist_name": "The Weeknd",
+                         "details": [
+                             "duration"
+                         ]
+                     }
+                 }
+             },
+             "DM": {...},
+             "GK": {"duration": 200},
+             "NLG": {"The song Blinding Lights by The Weeknd lasts 3 minutes and 20 seconds. Would you want to know more about it?"}
+         }
+
+         slots_to_update:
+         ["duration"]
+
+         user_input:
+         "When has it been released?"
+
+       Output:
+         {
+             "NLU": {
+                 "song_info": {
+                     "slots": {
+                         "song_name": "Blinding Lights",
+                         "artist_name": "The Weeknd",
+                         "duration": 200,
+                         "details": [
+                             "release_date"
+                         ]
+                     }
+                 }
+             }
+         }
+   - If the intent changes (e.g., the user asks for a different song, artist, or album), output only the sentence: "change_of_domain".
+     - Examples:
+       - If the intent is `song_info` for song A and the user asks about song B, output "change_of_domain".
+       - If the intent is `song_info` but the user now requests `artist_info` or `album_info`, output "change_of_domain".
+       - If the intent is `artist_info` for artist A and the user asks about artist B, output "change_of_domain".
+
+3. For any change in the `user_input` intent:
+   - If the intent is different from the current `state_dict` intent, do not attempt to rebuild the `state_dict`. Simply output "change_of_domain".
+
+4. Maintain the correct JSON format for the updated `NLU` section so that it can be parsed using `json.loads`.
+
+5. Output one of the following:
+   - The updated `NLU` section in JSON format, using the input `state_dict` and updating only the slots and `details` as necessary.
+   - Or the sentence "change_of_domain" if the intent changes. Do not output anything else.

@@ -8,7 +8,6 @@ from statedictmanager import *
 
 USER_INPUT = "user_input.txt"
 intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "out_of_domain"]
-info_intents = ["artist_info", "song_info", "album_info"]
 
 def build_GK():
     DM_component_part = state_manager.state_dict.get("DM", {})
@@ -77,7 +76,7 @@ def process_NLU_intent_and_slots(user_input):
     print("Processing Input: ", user_input)
         
     # extracting intents...
-    out_NLU_intents = model_query.query_model(system_prompt=PROMPT_NLU_intents, input_file=user_input)
+    out_NLU_intents = model_query.query_model(system_prompt=PROMPT_NLU_INTENTS, input_file=user_input)
     print("\nllama3.2 output [INTENTS]:\n", out_NLU_intents)
 
     state_manager.state_dict = {"NLU": {}}
@@ -90,7 +89,7 @@ def process_NLU_intent_and_slots(user_input):
     
         slots = {}
         # print("Extracting slots...")
-        out_NLU_slots = model_query.query_model(system_prompt=PROMPT_NLU_slots, input_file=slots_input)
+        out_NLU_slots = model_query.query_model(system_prompt=PROMPT_NLU_SLOTS, input_file=slots_input)
         
         for intent in intents_extracted:
             pattern = rf'(?:- )?(?:"{intent}"|{intent}).*?(\{{.*?\}})'
@@ -120,11 +119,23 @@ def process_NLU_intent_and_slots(user_input):
 def query_DM_model_with_validation(system_prompt, intents_extracted):
 
     for intent in intents_extracted:
-        if state_manager.state_dict["NLU"][intent]["slots"]["details"]:
+        if "details" in state_manager.state_dict["NLU"][intent]["slots"]:
             check_type = "request_info" if any("artist_name" in state_manager.state_dict["NLU"][intent]["slots"]["details"] for intent in intents_extracted) or state_manager.check_none_values() else "confirmation"
-                
+        else: 
+            check_type = "request_info" if state_manager.check_none_values() else "confirmation"
+    
     while True:
+        
+        # print("\n\n\nGiving to DM as input state_dict: \n\n\n", state_manager.state_dict)
+        
+        # with open(system_prompt, "r") as file:
+        #     content = file.read()
+        
+        # print("\n\n\n\n\nQuering DM model...with prompt: \n", content, "\n\nand input file: \n", str(state_manager.state_dict), "\n\n")
+        
         response = model_query.query_model(system_prompt=system_prompt, input_file=str(state_manager.state_dict))
+        
+        print("\n\nDM response to be validated: \n\n\n", response)
         if is_valid_response(response, check_type):
             break
         print(f"------------> Invalid next_best_action detected [{check_type}]... retrying...")
@@ -167,18 +178,19 @@ def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
     while True:
         out_NLU2 = model_query.query_model(system_prompt=prompt, input_file=str(user_input))
         
-        print("\n\n\nllama3.2 output [NLU2]:\n\n")
-        print(out_NLU2)
+        # print("\n\n\nllama3.2 output [NLU2]:\n\n")
+        # print(out_NLU2)
         
         # Check the condition for continuing or exiting (request_info)
         if "(request_info)" in user_input and validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
             print("\n\n----> request_info in NLU2 output detected... validated user_input...exiting...")
             break  # Exit the loop if the output is valid
-        
-        # Check the condition for continuing or exiting (confirmation)
-        if "(confirmation)" in user_input and validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
+        elif "(confirmation)" in user_input and validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
             print("\n\n----> confirmation in NLU2 output detected... validated user_input...exiting...")
             break  # Exit the loop if the output is valid
+        elif "change_of_domain" in out_NLU2:
+            print("\n\n\n------> Change of domain detected....exiting...")
+            break
         print("Invalid NLU2 output detected... retrying...")
         
     # print("\n\n\nllama3.2 output [NLU2]:\n\n")
@@ -189,6 +201,9 @@ def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
     
     
     # print("\n\n\nIntents extracted: ", intents_extracted)
+    
+    if "NLU" in out_NLU2:
+        out_NLU2 = out_NLU2["NLU"]
     
     correspondences_intents = {
         "artist_info": "artist_name",
@@ -212,7 +227,7 @@ def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
     
 def final_check_NLU(intents_extracted):
     for intent in intents_extracted:
-        if "details" not in state_manager.state_dict["NLU"][intent]["slots"]:
+        if intent in info_intents and "details" not in state_manager.state_dict["NLU"][intent]["slots"]:
             del state_manager.state_dict["NLU"][intent]
             print("\n\n\n------> No details found for ", intent, " intent. Deleting it from the state_dict...")
             

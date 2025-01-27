@@ -8,7 +8,7 @@ class StateDictManager:
     def check_none_values(self):
         # print("Checking for None values in state dictionary:\n\n\n\n", str(self.state_dict))
         if "None" in str(self.state_dict):
-            print("Null values found in state dictionary.")
+            # print("Null values found in state dictionary.")
             return True
         else:
             return False
@@ -63,7 +63,7 @@ class StateDictManager:
         """Deletes a section completely from the state dictionary."""
         if section in self.state_dict:
             del self.state_dict[section]
-            print(f"Section '{section}' has been deleted from the state_dict.")
+            # print(f"Section '{section}' has been deleted from the state_dict.")
         else:
             print(f"Section '{section}' not found in state_dict. Nothing to delete.")
             

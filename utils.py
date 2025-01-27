@@ -4,10 +4,11 @@ import json
 
 intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "out_of_domain"]
 PROMPT_NLU = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU.txt")
-PROMPT_NLU_intents = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_intents.txt")
-PROMPT_NLU_slots = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_slots.txt")
+PROMPT_NLU_INTENTS = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_intents.txt")
+PROMPT_NLU_SLOTS = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_slots.txt")
 PROMPT_DM = os.path.join(os.path.dirname(__file__), "prompts/prompt_DM.txt")
 PROMPT_NLG = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLG.txt")
+info_intents = ["artist_info", "song_info", "album_info"]
 
 def split_intent(input_string):
     match = re.match(r"(\w+)\((\w+)\)", input_string)
@@ -141,20 +142,31 @@ def fix_json_string(json_string):
     
 def is_valid_response(response, check_type):
     """Check if the response is valid based on type and arguments."""
-    parsed_response = fix_json_string(response)  # Fix and parse the JSON response
 
-    print("Inside validation, now checking response...", parsed_response, "\nwith check type: ", check_type)
+    try:
+        parsed_response = fix_json_string(response)  # Fix and parse the JSON response
+        if not parsed_response:
+            print("Failed to parse JSON response.")
+            return False
+    except json.JSONDecodeError:
+        print("Failed to parse JSON response.")
+        return False
+    # print("Inside validation, now checking response...", parsed_response, "\nwith check type: ", check_type)
+    
+    if "next_best_action" not in parsed_response:
+        # print("Key 'next_best_action' is missing in response.")
+        return False
     
     # qua bisogna fare un check sull'intent estratto da DM per next_best_action e vedere se è user_top_tracks o user_top_artists va bene che non ci sia details    
     next_best_action = parsed_response["next_best_action"]
-    print("Next best action: ", next_best_action)
+    # print("Next best action: ", next_best_action)
     match = re.search(r'\((.*?)\)', next_best_action)
     if match:
         intent = match.group(0)
     
     # Safely check if "details" exists and is not empty
     if not parsed_response["args"].get("details"): 
-        print("Key 'details' is missing or empty in 'args'.")
+        # print("Key 'details' is missing or empty in 'args'.")
         if intent in ["user_top_tracks", "user_top_artists", "out_of_domain"]:
             pass 
         else:           
@@ -200,14 +212,22 @@ def validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
     if not out_NLU2:
         return False
     
+    mandatory_slots = {
+        "artist_info": ["artist_name"],
+        "song_info": ["song_name", "artist_name"],
+        "album_info": ["album_name", "artist_name"]
+    }
+    
     for intent in intents_extracted:
         for slot in slot_to_update:
             if "slots" not in out_NLU2["NLU"][f"{intent}"] or not slot in out_NLU2["NLU"][f"{intent}"]["slots"] or out_NLU2["NLU"][f"{intent}"]["slots"][slot] in [None, "null"]:
                 return False
-            if "details" not in out_NLU2["NLU"][f"{intent}"]["slots"]:
+            if intent in info_intents and "details" not in out_NLU2["NLU"][f"{intent}"]["slots"]:
                 return False
-            if "NLG" in out_NLU2 or "DM" in out_NLU2 or "GK" in out_NLU2:
-                return False
+            # if "NLG" in out_NLU2 or "DM" in out_NLU2 or "GK" in out_NLU2:
+            #     return False
+        if not all(slot in out_NLU2["NLU"][f"{intent}"]["slots"] for slot in mandatory_slots[intent]):
+            return False
     return True
 
 def build_prompt_for_NLU2(state_dict, slot_to_update):

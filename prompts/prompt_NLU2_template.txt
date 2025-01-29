@@ -104,7 +104,7 @@ RULES FOR UPDATING THE state_dict:
             }  
             ...
         }  
-        user_input: "Tell me about the song Save Your Tears."  
+        user_input: "When has been released the song Save Your Tears."  
 
         Output:  
         change_of_domain  

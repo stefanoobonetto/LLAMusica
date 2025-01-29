@@ -203,44 +203,20 @@ def process_NLG():
     state_manager.display()    
     return out_NLG
 
-def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
-    while True:
-        if "artist_name" in slot_to_update:
-            slot_to_update = ["artist_name"]
-        # print("slots to update: ", slot_to_update)
-        out_NLU2 = model_query.query_model(system_prompt=prompt, input_file=str(user_input))
-        
-        # print("\n\n\nllama3.2 output [NLU2]:\n\n")
-        # print(out_NLU2)
-        
-        # Check the condition for continuing or exiting (request_info)
-        
-        print("Analyzing user_input: ", user_input)
-        
-        if "(request_info)" in user_input and validate_out_NLU2(state_manager.state_dict, out_NLU2, slot_to_update, intents_extracted, "request_info"):
-            print("\n\n----> request_info in NLU2 output detected... validated user_input...exiting...")
-            break  # Exit the loop if the output is valid
-        elif "(confirmation)" in user_input and validate_out_NLU2(state_manager.state_dict, out_NLU2, slot_to_update, intents_extracted, "confirmation"):
-            print("\n\n----> confirmation in NLU2 output detected... validated user_input...exiting...")
-            break  # Exit the loop if the output is valid
-        elif "change_of_domain" in out_NLU2:
-            print("\n\n\n------> Change of domain detected....exiting...")
-            break
-        print(f"Invalid NLU2 output detected \n{out_NLU2}\n... retrying...")
-        
-    # print("\n\n\nllama3.2 output [NLU2]:\n\n")
-    # print(out_NLU2)
+def process_NLU2(slot_to_update, user_input, intents_extracted):
+    # while True:
+
+    out_COD = model_query.query_model(system_prompt=build_prompt_for_COD(state_manager.state_dict, intents_extracted), input_file=str(user_input))
     
-    # if the output is a state_dict, update the state_dict and return True 
-    # if the output is "change_of_domain" return False
+    print("Analyzing user_input: ", user_input)
+    
+        # if "same_query" in out_COD or "change_of_query" in out_COD:
+        #     break 
+        # print(f"Invalid COD output detected \n{out_COD}\n... retrying...")
+    print("out_COD --------> ", out_COD, "\n\n")
     
     
-    # print("\n\n\nIntents extracted: ", intents_extracted)
-    
-    print("out_NLU2 ----> \n", out_NLU2, "\n\n")
-    
-    
-    if "change_of_domain" in out_NLU2 :     # or any(state_manager.state_dict["NLU"][intent]["slots"][correspondences_intents[intent]] not in out_NLU2 for intent in intents_extracted)
+    if "change_of_query" in out_COD :     # or any(state_manager.state_dict["NLU"][intent]["slots"][correspondences_intents[intent]] not in out_NLU2 for intent in intents_extracted)
         print("\n\n\n------> Change of domain detected....\n\n\n")
         state_manager.delete_section("NLU")        
         state_manager.delete_section("DM")
@@ -248,8 +224,26 @@ def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
         state_manager.delete_section("NLG")
         return False 
     else:
-        print("\n\n\nUpdating state_dict with NLU2 output...\n\n\n")
-        state_manager.state_dict = check_null_slots_and_update_state_dict(state_manager.state_dict, out_NLU2, intents_extracted, slot_to_update)
+        print("\n\n\nUpdating state_dict with USD output...\n\n\n")
+        
+        while True:
+            if "artist_name" in slot_to_update:
+                slot_to_update = ["artist_name"]
+            if "confirmation" in user_input:
+                slot_to_update.append("details")
+
+            out_USD = model_query.query_model(system_prompt=build_prompt_for_USD(state_manager.state_dict, slot_to_update), input_file=str(user_input))
+            print("Analyzing out_SD: \n", out_USD)
+            
+            if "(request_info)" in user_input and validate_USD(state_manager.state_dict, out_USD, slot_to_update, intents_extracted, "request_info"):
+                print("\n\n----> request_info in NLU2 output detected... validated user_input...exiting...")
+                break  # Exit the loop if the output is valid
+            elif "(confirmation)" in user_input and validate_USD(state_manager.state_dict, out_USD, slot_to_update, intents_extracted, "confirmation"):
+                print("\n\n----> confirmation in NLU2 output detected... validated user_input...exiting...")
+                break  # Exit the loop if the output is valid
+            print(f"Invalid NLU2 output detected \n{out_COD}\n... retrying...")
+        
+        state_manager.state_dict = check_null_slots_and_update_state_dict(state_manager.state_dict, out_USD, intents_extracted, slot_to_update)
         state_manager.delete_section("DM")
         state_manager.delete_section("GK")
         state_manager.delete_section("NLG")
@@ -285,19 +279,17 @@ def run_pipeline(user_input):
         final_check_NLU(intents_extracted)
 
         while not new_intent and not exit:
-            
+            print("-"*95)
             print("\nState Dictionary after NLU component processing:\n")
             state_manager.display()
             
-            
-            
-            print("-"*95)
             process_DM(intents_extracted)
+            print("-"*95)
             print("\nState Dictionary after DM component processing:\n")
             state_manager.display()
             
-            print("-"*95)    
             build_GK()
+            print("-"*95)
             print("\nState Dictionary after GK component processing:\n")
             state_manager.display()
             
@@ -312,37 +304,25 @@ def run_pipeline(user_input):
             
             slot_to_update = get_slot_to_update(state_manager.state_dict)
             
-            if get_current_action(state_manager.state_dict) == "request_info":
-                user_input = input(out_NLG + "\n")  
-                # these slots to update are extracted from the state_dict only if the next_best_action is "request_info"        
-                process_NLU2(slot_to_update, build_prompt_for_NLU2(state_manager.state_dict, slot_to_update), user_input + " (request_info)", intents_extracted)
+            user_input = input(out_NLG + "\n")  
+            # these slots to update are extracted from the state_dict only if the next_best_action is "request_info"        
+            result = process_NLU2(slot_to_update, user_input + f" ({get_current_action(state_manager.state_dict)})", intents_extracted)
                 
-                # here we should repass it through the DM component to arrive till a confirmation next_best_action
-                
-            elif get_current_action(state_manager.state_dict) == "confirmation":
-                user_input = input(out_NLG + "\n")
-                # user_input = "When has been released Imagine by John Lennon?"
-                # print(out_NLG + "\n" + user_input)
-                
-                result = process_NLU2(slot_to_update, build_prompt_for_NLU2(state_manager.state_dict, slot_to_update), user_input + " (confirmation)", intents_extracted)
-                
-                if not result:                  # change_of_domain detected
-                    new_intent = True
-                    
-                    # print("Entratoooooooooooooooooo")
-                    
-                    print("\n\nNew intent detected. Exiting the current loop...\n\n")
-                    print("-"*95)
-                    print("-"*95)
-                    print("-"*95)
-                else:
-                    print("\nState Dictionary after NLU2 component processing:\n")
-                    state_manager.display()
-                
-                if user_input == "no":
-                    # the main idea is to add an intent "end_conversation" that determine when a user wants to quit his experience with llama platform
-                    # till now, the conversation will be stuck in this main loop. 
-                    exit = True
+            if not result:                  # change_of_domain detected
+                new_intent = True                
+                print("\n\nNew intent detected. Exiting the current loop...\n\n")
+                print("-"*95)
+                print("-"*95)
+                print("-"*95)
+            else:
+                print("-"*95)
+                print("\nState Dictionary after NLU2 component processing:\n")
+                state_manager.display()
+            
+            if user_input == "exit":
+                # the main idea is to add an intent "end_conversation" that determine when a user wants to quit his experience with llama platform
+                # till now, the conversation will be stuck in this main loop. 
+                exit = True
         
 if __name__ == "__main__":
     

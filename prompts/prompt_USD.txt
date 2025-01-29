@@ -1,0 +1,66 @@
+You have to update the `NLU` section of the `state_dict` based on `user_input` and `slots_to_update`.  
+
+Rules for Updating Slots:  
+
+1. Handling (request_info) Cases  
+   - If `user_input` ends with (request_info) and the user confirms:  
+     - Update the specified slots using values from `GK`.  
+     - Remove the updated slots from the "details" list in `state_dict`.  
+     - Output only the updated slots in the format:
+           -"slot1": "new_value1"
+           -"slot2": "new_value2"
+   
+   Example:  
+   Input:  
+        state_dict: {
+            "NLU": {
+                "song_info": {
+                    "slots": {
+                        "song_name": "Blinding Lights",
+                        "artist_name": null,
+                        "details": ["duration"]
+                    }
+                }
+            },
+            ...,
+            "GK": {"artist_name": "The Weeknd"}
+        }
+        slots_to_update: ["artist_name"]
+        user_input: "Yes"
+    
+    Output:
+        - "artist_name": "The Weeknd"
+
+2. Handling (confirmation) Cases  
+- If `user_input` ends with (confirmation) and the intent remains the same:  
+  - Update the specified slots with values from `GK`.  
+  - Add any new details requested by the user to the "details" list.  
+  - Output all updated slots in the required format.  
+
+    Example:
+    Input:  
+    state_dict: {
+        "NLU": {
+            "song_info": {
+                "slots": {
+                    "song_name": "Blinding Lights",
+                    "artist_name": "The Weeknd",
+                    "details": ["duration"]
+                }
+            }
+        },
+        ...,
+        "GK": {"duration": 200}
+    }
+    slots_to_update: ["duration", "details"]
+    user_input: "When has it been released?"
+
+    Output:  
+        - "duration": "200" 
+        - "details": ["release_date"]
+
+
+
+
+
+

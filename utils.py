@@ -8,13 +8,23 @@ PROMPT_NLU_INTENTS = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU
 PROMPT_NLU_SLOTS = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_slots.txt")
 PROMPT_DM = os.path.join(os.path.dirname(__file__), "prompts/prompt_DM.txt")
 PROMPT_NLG = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLG.txt")
+PROMPT_USD = os.path.join(os.path.dirname(__file__), "prompts/prompt_USD.txt")
+PROMPT_COD_DETECTION = os.path.join(os.path.dirname(__file__), "prompts/prompt_COD_detection.txt")
+
+
 info_intents = ["artist_info", "song_info", "album_info"]
 
 correspondences_intents = {
-        "artist_info": "artist_name",
-        "song_info": "song_name",
-        "album_info": "album_name"
-    }
+    "artist_info": "artist_name",
+    "song_info": "song_name",
+    "album_info": "album_name"
+}
+
+info_entity = {
+    "artist_info": "artist_name",
+    "song_info": ["song_name", "artist_name"],
+    "album_info": ["album_name", "artist_name"]
+}
 
 def split_intent(input_string):
     match = re.match(r"(\w+)\((\w+)\)", input_string)
@@ -219,7 +229,7 @@ def get_slot_to_update(state_dict):
     
     return slot_to_update
 
-def validate_out_NLU2(state_dict, out_NLU2, slot_to_update, intents_extracted, action):
+def validate_USD(state_dict, out_NLU2, slot_to_update, intents_extracted, action):
     
     slot_to_update.append("details")  
     
@@ -231,7 +241,7 @@ def validate_out_NLU2(state_dict, out_NLU2, slot_to_update, intents_extracted, a
                     
     for slot in slot_to_update:
     # Use regex to extract the value of the slot
-        match = re.search(rf'.*{slot}.*:\s*(.+)', str(out_NLU2))
+        match = re.search(rf'.*{re.escape(slot)}.*:\s*(.+)', str(out_NLU2))
 
         if not match: 
                return False
@@ -270,13 +280,36 @@ def validate_out_NLU2(state_dict, out_NLU2, slot_to_update, intents_extracted, a
 #             return False
 #     return True
 
-def build_prompt_for_NLU2(state_dict, slot_to_update):
-    # Properly escape curly braces in the JSON example using double braces {{ }}
+def build_prompt_for_COD(state_dict, intents_extracted):
+    prev_entity = ""    
     
-    PROMPT_NLU2_TEMPLATE = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU2_template.txt")
+    for intent in intents_extracted:
+        if intent in info_intents:
+            prev_entity += " - ".join(
+                state_dict["NLU"][intent]["slots"][elem]
+                for intent in intents_extracted
+                for elem in info_entity[intent]
+            ) + "\n"
+        else:
+            prev_entity += intent
+        
+    print("PREVIOUS ENTITY: ", prev_entity)
+    
+    prefix = "previous_entity: \n" + str(prev_entity)
+    
+    with open(PROMPT_COD_DETECTION, "r") as file:
+        template = file.read()
+    
+    prompt = prefix + "\n\n" + template
+    
+    print("PROMPT: \n\n", str(prompt)) 
+
+    return prompt
+
+def build_prompt_for_USD(state_dict, slot_to_update):    
     prefix = "slot_to_update: " + str(slot_to_update) + "\nstate_dict: \n" + str(state_dict)
-    
-    with open(PROMPT_NLU2_TEMPLATE, "r") as file:
+        
+    with open(PROMPT_USD, "r") as file:
         template = file.read()
     
     prompt = prefix + "\n\n" + template

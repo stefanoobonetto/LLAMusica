@@ -10,6 +10,12 @@ PROMPT_DM = os.path.join(os.path.dirname(__file__), "prompts/prompt_DM.txt")
 PROMPT_NLG = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLG.txt")
 info_intents = ["artist_info", "song_info", "album_info"]
 
+correspondences_intents = {
+        "artist_info": "artist_name",
+        "song_info": "song_name",
+        "album_info": "album_name"
+    }
+
 def split_intent(input_string):
     match = re.match(r"(\w+)\((\w+)\)", input_string)
     if match:
@@ -61,7 +67,7 @@ def check_slots(NLU_component, slots):
     }
 
     if not slots or "slots" not in slots:  # Check if 'slots' key exists
-        print("Slots data is missing or invalid.")
+        # print("Slots data is missing or invalid.")
         return False
 
     actual_slots = slots["slots"]  # Extract the actual slots data
@@ -144,7 +150,7 @@ def is_valid_response(response, check_type):
     """Check if the response is valid based on type and arguments."""
 
     try:
-        parsed_response = fix_json_string(response)  # Fix and parse the JSON response
+        parsed_response = fix_json_string(response)  
         if not parsed_response:
             print("Failed to parse JSON response.")
             return False
@@ -179,19 +185,32 @@ def is_valid_response(response, check_type):
     
     return False
 
-def check_null_slots_and_update_state_dict(state_dict, out_NLU2, intents_extracted):
-    out_NLU2 = fix_json_string(out_NLU2)
+def check_null_slots_and_update_state_dict(state_dict, out_NLU2, intents_extracted, slot_to_update):
+    # out_NLU2 = str(fix_json_string(out_NLU2))  # Ensure the string format is correct
+    
+    slot_to_update.append("details")            # Add 'details' to the list of slots to update, so that if the action is confirmation and 
+                                                # user asked for something new, it can update the details 
+    
+    for intent in intents_extracted:                                                    # nel caso di confirmation voglio aggiornare anche i details
+        for detail in state_dict["NLU"][intent]["slots"]["details"]:
+            if detail not in slot_to_update:            
+                slot_to_update.append(detail)
+
+    
     for intent in intents_extracted:
-        for slot in out_NLU2["NLU"][f"{intent}"]["slots"]:
-            # Controllo se lo slot non esiste affatto in state_dict
-            if slot not in state_dict["NLU"][f"{intent}"]["slots"]:
-                state_dict["NLU"][f"{intent}"]["slots"][slot] = out_NLU2["NLU"][f"{intent}"]["slots"][slot]
-            # Se lo slot esiste ma è None o "null"
-            elif state_dict["NLU"][f"{intent}"]["slots"][slot] in [None, "null"]:
-                state_dict["NLU"][f"{intent}"]["slots"][slot] = out_NLU2["NLU"][f"{intent}"]["slots"][slot]
-        state_dict["NLU"][f"{intent}"]["slots"]["details"] = out_NLU2["NLU"][f"{intent}"]["slots"]["details"]
-    return state_dict    
-            
+        for slot in state_dict["NLU"][intent]["slots"]:
+            if slot in slot_to_update:
+                # Use regex to extract the value of the slot
+                match = re.search(rf'.*{slot}.*:\s*(.+)', str(out_NLU2))
+                
+                if match:
+                    new_value = match.group(1)  # Extract the captured value
+                    state_dict["NLU"][intent]["slots"][slot] = new_value  # Update state_dict
+
+    
+    
+    return state_dict
+
 def get_slot_to_update(state_dict):
     slot_to_update = []
         
@@ -200,35 +219,56 @@ def get_slot_to_update(state_dict):
     
     return slot_to_update
 
-def validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
+def validate_out_NLU2(state_dict, out_NLU2, slot_to_update, intents_extracted, action):
     
-    print("Validating NLU2 output...\n", out_NLU2, "\n\n\n")
+    slot_to_update.append("details")  
     
-    if "change_of_intent" in out_NLU2:
-        return True
+    if action == "confirmation":
+        for intent in intents_extracted:                                                    # nel caso di confirmation voglio aggiornare anche i details
+            for detail in state_dict["NLU"][intent]["slots"]["details"]:
+                if detail not in slot_to_update:            
+                    slot_to_update.append(detail)
+                    
+    for slot in slot_to_update:
+    # Use regex to extract the value of the slot
+        match = re.search(rf'.*{slot}.*:\s*(.+)', str(out_NLU2))
+
+        if not match: 
+               return False
+    return True     
+
+# def validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
     
-    out_NLU2 = fix_json_string(out_NLU2)
+#     print("Validating NLU2 output...\n", out_NLU2, "\n\n\n")
     
-    if not out_NLU2:
-        return False
+#     if "change_of_intent" in out_NLU2:
+#         return True
     
-    mandatory_slots = {
-        "artist_info": ["artist_name"],
-        "song_info": ["song_name", "artist_name"],
-        "album_info": ["album_name", "artist_name"]
-    }
+#     out_NLU2 = fix_json_string(out_NLU2)
     
-    for intent in intents_extracted:
-        for slot in slot_to_update:
-            if "slots" not in out_NLU2["NLU"][f"{intent}"] or not slot in out_NLU2["NLU"][f"{intent}"]["slots"] or out_NLU2["NLU"][f"{intent}"]["slots"][slot] in [None, "null"]:
-                return False
-            if intent in info_intents and "details" not in out_NLU2["NLU"][f"{intent}"]["slots"]:
-                return False
-            # if "NLG" in out_NLU2 or "DM" in out_NLU2 or "GK" in out_NLU2:
-            #     return False
-        if not all(slot in out_NLU2["NLU"][f"{intent}"]["slots"] for slot in mandatory_slots[intent]):
-            return False
-    return True
+#     if not out_NLU2:
+#         return False
+    
+#     mandatory_slots = {
+#         "artist_info": ["artist_name"],
+#         "song_info": ["song_name", "artist_name"],
+#         "album_info": ["album_name", "artist_name"]
+#     }
+    
+#     if "artist_name" in slot_to_update:
+#         slot_to_update = ["artist_name"]
+    
+#     for intent in intents_extracted:
+#         for slot in slot_to_update:
+#             if "slots" not in out_NLU2["NLU"][f"{intent}"] or not slot in out_NLU2["NLU"][f"{intent}"]["slots"] or out_NLU2["NLU"][f"{intent}"]["slots"][slot] in [None, "null"]:
+#                 return False
+#             if intent in info_intents and "details" not in out_NLU2["NLU"][f"{intent}"]["slots"]:
+#                 return False
+#             # if "NLG" in out_NLU2 or "DM" in out_NLU2 or "GK" in out_NLU2:
+#             #     return False
+#         if not all(slot in out_NLU2["NLU"][f"{intent}"]["slots"] for slot in mandatory_slots[intent]):
+#             return False
+#     return True
 
 def build_prompt_for_NLU2(state_dict, slot_to_update):
     # Properly escape curly braces in the JSON example using double braces {{ }}

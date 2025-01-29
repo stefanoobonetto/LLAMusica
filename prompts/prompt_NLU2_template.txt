@@ -1,133 +1,130 @@
-Based on the provided `user_input` and `slots_to_update` you must update the `NLU` section according to the previous `state_dict` provided as input.  
+TASK:  
+You must update the NLU section of the provided state_dict based on user_input and slots_to_update.  
 
-Rules for updating the `state_dict`:
-1. If the `user_input` ends with `(request_info)` and the user confirms, update the state_dict according to the user_input (and the information found in the GK entry) and remove it 
-   from the `details` list.
-   Is fundamental that you take the input state_dict NLU entry and substitute the slots_to_update value with the one in GK if the user give a positive answer.
-   
-   Example:
-        Input:
-            state_dict:
-            {
-                "NLU": {
-                    "song_info": {
-                        "slots": {
-                            "song_name": "Blinding Lights",
-                            "artist_name": null,
-                            "details": [
-                                "duration"
-                            ]
-                        }
-                    }
-                },
-                "DM": {...},
-                "GK": {"artist_name" : "The Weeknd},
-                "NLG": {"Did you mean Blinding Lights by The Weeknd?"}
-            }
+IMPORTANT: The output format MUST be strictly followed:  
+- Output only the updated slots in the following format:
+  -"slot1": "value1" 
+  -"slot2": "value2" 
+  ...
+- If the user requests additional details (confirmation case), include these new details in the "details" list.
+- If a domain change is detected, output only "change_of_domain" as a plain string (no JSON formatting).  
 
-            slots_to_update:
-            ["artist_name"]
+---
 
-            user_input:
-            "Yes"
+RULES FOR UPDATING THE state_dict:  
 
-        Output:
-            "NLU": {
-                "song_info": {
-                    "slots": {
-                        "song_name": "Blinding Lights",
-                        "artist_name": "The Weeknd",
-                        "details": [
-                            "duration"
-                        ]
-                    }
-                }
-            }
+1. Handling (request_info) Cases  
+   - If user_input ends with (request_info) and the user confirms:  
+     - Update the specified slots in the state_dict using the values from GK.
+     - Output the updated slots in the format:
+       -"slot1": "new_value1" 
+       -"slot2": "new_value2" 
+       ...
+     - Remove the updated slots from the "details" list in the state_dict.  
 
+   Example:  
+   Input:  
+   state_dict:  
+   {  
+       "NLU": {  
+           "song_info": {  
+               "slots": {  
+                   "song_name": "Blinding Lights",  
+                   "artist_name": null,  
+                   "details": ["duration"]  
+               }  
+           }  
+       },  
+       "DM": {...},  
+       "GK": {"artist_name": "The Weeknd"},  
+       "NLG": {"Did you mean Blinding Lights by The Weeknd?"}  
+   }  
+   slots_to_update: ["artist_name"]  
+   user_input: "Yes"  
 
+   Output:  
+   -"artist_name": "The Weeknd"  
 
-2. If the `user_input` ends with `(confirmation)`:
-   - If the intent is the same as the one in the `state_dict`:
-     - Update the slot value using all the values found in the `GK` entry (while keeping the old slots intact).  
-     - Add any new elements requested by the user to the `details` list.  
-     - Remember: `details` can contain multiple values:
-       - If the intent is `song_info`, `details` is a list of one or more of: [popularity, release_date, duration, album, artist, genres, all].
-       - If the intent is `artist_info`, `details` is a list of one or more of: [followers, popularity, genres, all].
-       - If the intent is `album_info`, `details` is a list of one or more of: [genres, release_date, total_tracks, all].
-    Example:
-        Input:
-            state_dict:
-            {
-                "NLU": {
-                    "song_info": {
-                        "slots": {
-                            "song_name": "Blinding Lights",
-                            "artist_name": "The Weeknd",
-                            "details": [
-                                "duration"
-                            ]
-                        }
-                    }
-                },
-                "DM": {...},
-                "GK": {"duration" : 200},
-                "NLG": {"The song Blinding Lights by The Weeknd lasts 3 minutes and 20 seconds. Would you want to know more about it?"}
-            }
+2. Handling (confirmation) Cases  
+   - If user_input ends with (confirmation):  
+     - If the intent in state_dict matches the current intent:  
+       - Update the specified slots with the values found in GK.  
+       - Add any new details requested by the user to the "details" list.  
+       - Is FUNDAMENTAL that you output all updated slots in the format:
+         -"slot1": "new_value1" 
+         -"slot2": "new_value2" 
+         ...
+       - If details are updated, list the new additions accordingly.  
 
-            slots_to_update:
-            ["duration"]
+   Example:  
+   Input:  
+   state_dict:  
+   {  
+       "NLU": {  
+           "song_info": {  
+               "slots": {  
+                   "song_name": "Blinding Lights",  
+                   "artist_name": "The Weeknd",  
+                   "details": ["duration"]  
+               }  
+           }  
+       },  
+       "DM": {...},  
+       "GK": {"duration": 200},  
+       "NLG": {"The song Blinding Lights by The Weeknd lasts 3 minutes and 20 seconds. Would you want to know more about it?"}  
+   }  
+   slots_to_update: ["duration"]  
+   user_input: "When has it been released?"  
 
-            user_input:
-            "When has it been released?"
+   Output:  
+   -"duration": "200"  
+   -"details": ["release_date"]
 
-        Output:
-            "NLU": {
-                "song_info": {
-                    "slots": {
-                        "song_name": "Blinding Lights",
-                        "artist_name": "The Weeknd",
-                        "duration": 200,
-                        "details": [
-                            "release_date"
-                        ]
-                    }
-                }
-            }
-        Remember that is fundamental that you take the old details elements and put them as normal slots using as values the one provided in GK entry, and 
-        then update the details list with the new informations asked by the user.
+3. Handling Domain Changes  
+   - If the user asks about a different song, artist, or album or topic output only "change_of_domain".  
+   - This includes cases where:  
+     - The user mentions a new song, artist, or album name.  
+     - The user asks for top tracks, top artists, or user preferences. 
+     - the user asks for other stuff not regarding the previous intent 
+   - Be certain before outputting "change_of_domain"—in most cases, the user continues the same conversation.  
 
-   - If the intent in the `user_input` is different from the intent in the `state_dict`, output only the sentence: "change_of_domain". Examples include:
-        - If the `state_dict` intent is a `song_info` for a song A, and the user now asks for information about another song B, output "change_of_domain".
-        - If the `state_dict` intent is `song_info` for one song, and the user now requests information about an artist or album, output "change_of_domain".
-        - If the `state_dict` intent is `artist_info` for artist A, and the user now asks about artist B, output "change_of_domain".
-        - If the `state_dict` intent is `album_info` for album A, and the user now asks about album B, output "change_of_domain".
-     Notice that a change_of_domain situation sussits if the user cite at least a new personal name of song, album or artist or asks for user
-     preferences such as top tracks or top artist.
-     Please output change_of_domain only if you're sure about it, consider that in most of cases the user will continue the same conversation.
-     
+   Examples:  
+   Case 1: Asking about a different song  
+        Input:  
+        state_dict:  
+        {  
+            "NLU": {  
+                "song_info": {  
+                    "slots": {  
+                        "song_name": "Blinding Lights",  
+                        "artist_name": "The Weeknd",  
+                        "details": ["duration"]  
+                    }  
+                }  
+            }  
+            ...
+        }  
+        user_input: "Tell me about the song Save Your Tears."  
 
-3. Your task is to:
-   - Update the `state_dict` with the new slot values extracted from the `user_input`.
-   - Maintain the correct JSON format so that it can be parsed using `json.loads`.
+        Output:  
+        change_of_domain  
 
-4. Output only:
-   - ONLY the updated `NLU` section (forget all the other entries such as DM, GK and NLG) in JSON format, like this, update the one provided as input, 
-     maintaining only the NLU entry updating slot_to_update:
+   Case 2: Switching to artist_info  
+        Input:  
+        state_dict:  
+        {  
+            "NLU": {  
+                "song_info": {  
+                    "slots": {  
+                        "song_name": "Blinding Lights",  
+                        "artist_name": "The Weeknd",  
+                        "details": ["duration"]  
+                    }  
+                }  
+            }  
+            ...
+        }  
+        user_input: "How many followers does The Weeknd have?"  
 
-        {
-            "NLU": {
-                "<intent>": {
-                    "slots": {
-                        "<slot1>": "<value1>",
-                        "<slot2>": "<value2>",
-                        "details": [
-                            ...
-                        ]
-                    }
-                }
-            }
-        }
-
-   - Or the sentence "change_of_domain" if the domain changes. Do not output anything else.
-
-5. If the user changes topic (e.g. asks for other songs, artists or albums), it is FUNDAMENTAL that you DO NOT attempt to rebuild the `state_dict` for the new query. If the intent changes—simply output "change_of_domain".
+        Output:  
+        change_of_domain  

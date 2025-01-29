@@ -72,6 +72,33 @@ def build_GK():
         print(f"\nUnsupported action: {action}.")
         return state_manager.state_dict
 
+# def check_duplicates(intents_extracted):
+#     to_keep = {}  # Dictionary to store the first occurrence of each unique slot combination
+#     to_delete = set()
+
+#     for intent in intents_extracted:
+#         virgin_intent = re.sub(r'\d+$', '', intent)  # Remove trailing numbers
+
+#         slot_values = state_manager.state_dict["NLU"][intent]["slots"][correspondences_intents[virgin_intent]]
+
+#         # Convert slot_values to a tuple so it can be used as a key (since dicts are unhashable)
+#         slot_tuple = tuple(sorted(slot_values.items()))  
+
+#         # If this slot combination is already seen, mark it for deletion
+#         if (virgin_intent, slot_tuple) in to_keep:
+#             to_delete.add(intent)
+#         else:
+#             to_keep[(virgin_intent, slot_tuple)] = intent  # Store the first occurrence
+
+#     # Keep only the necessary intents
+#     intents_extracted[:] = [intent for intent in intents_extracted if intent not in to_delete]
+
+#     # Remove duplicates from state_manager
+#     for intent in to_delete:
+#         del state_manager.state_dict["NLU"][intent]
+
+#     return intents_extracted
+
 def process_NLU_intent_and_slots(user_input):
     print("Processing Input: ", user_input)
         
@@ -111,6 +138,8 @@ def process_NLU_intent_and_slots(user_input):
                     slots = {}
             state_manager.update_section("NLU", {intent: slots})
 
+    # intents_extracted = check_duplicates(intents_extracted)
+    
             
     print("\nllama3.2 output [SLOTS]:\n", out_NLU_slots)
 
@@ -135,7 +164,7 @@ def query_DM_model_with_validation(system_prompt, intents_extracted):
         
         response = model_query.query_model(system_prompt=system_prompt, input_file=str(state_manager.state_dict))
         
-        print("\n\nDM response to be validated: \n\n\n", response)
+        # print("\n\nDM response to be validated: \n\n\n", response)
         if is_valid_response(response, check_type):
             break
         print(f"------------> Invalid next_best_action detected [{check_type}]... retrying...")
@@ -176,22 +205,28 @@ def process_NLG():
 
 def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
     while True:
+        if "artist_name" in slot_to_update:
+            slot_to_update = ["artist_name"]
+        # print("slots to update: ", slot_to_update)
         out_NLU2 = model_query.query_model(system_prompt=prompt, input_file=str(user_input))
         
         # print("\n\n\nllama3.2 output [NLU2]:\n\n")
         # print(out_NLU2)
         
         # Check the condition for continuing or exiting (request_info)
-        if "(request_info)" in user_input and validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
+        
+        print("Analyzing user_input: ", user_input)
+        
+        if "(request_info)" in user_input and validate_out_NLU2(state_manager.state_dict, out_NLU2, slot_to_update, intents_extracted, "request_info"):
             print("\n\n----> request_info in NLU2 output detected... validated user_input...exiting...")
             break  # Exit the loop if the output is valid
-        elif "(confirmation)" in user_input and validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
+        elif "(confirmation)" in user_input and validate_out_NLU2(state_manager.state_dict, out_NLU2, slot_to_update, intents_extracted, "confirmation"):
             print("\n\n----> confirmation in NLU2 output detected... validated user_input...exiting...")
             break  # Exit the loop if the output is valid
         elif "change_of_domain" in out_NLU2:
             print("\n\n\n------> Change of domain detected....exiting...")
             break
-        print("Invalid NLU2 output detected... retrying...")
+        print(f"Invalid NLU2 output detected \n{out_NLU2}\n... retrying...")
         
     # print("\n\n\nllama3.2 output [NLU2]:\n\n")
     # print(out_NLU2)
@@ -202,24 +237,19 @@ def process_NLU2(slot_to_update, prompt, user_input, intents_extracted):
     
     # print("\n\n\nIntents extracted: ", intents_extracted)
     
-    if "NLU" in out_NLU2:
-        out_NLU2 = out_NLU2["NLU"]
+    print("out_NLU2 ----> \n", out_NLU2, "\n\n")
     
-    correspondences_intents = {
-        "artist_info": "artist_name",
-        "song_info": "song_name",
-        "album_info": "album_name"
-    }
     
-    if "change_of_domain" in out_NLU2 or any(state_manager.state_dict["NLU"][intent]["slots"][correspondences_intents[intent]] not in out_NLU2 for intent in intents_extracted):
-        print("\n\n\n------> Change of domain detected....")
+    if "change_of_domain" in out_NLU2 :     # or any(state_manager.state_dict["NLU"][intent]["slots"][correspondences_intents[intent]] not in out_NLU2 for intent in intents_extracted)
+        print("\n\n\n------> Change of domain detected....\n\n\n")
         state_manager.delete_section("NLU")        
         state_manager.delete_section("DM")
         state_manager.delete_section("GK")
         state_manager.delete_section("NLG")
         return False 
     else:
-        state_manager.state_dict = check_null_slots_and_update_state_dict(state_manager.state_dict, out_NLU2, intents_extracted)
+        print("\n\n\nUpdating state_dict with NLU2 output...\n\n\n")
+        state_manager.state_dict = check_null_slots_and_update_state_dict(state_manager.state_dict, out_NLU2, intents_extracted, slot_to_update)
         state_manager.delete_section("DM")
         state_manager.delete_section("GK")
         state_manager.delete_section("NLG")
@@ -320,7 +350,7 @@ if __name__ == "__main__":
     
     authenticate()
         
-    user_input = "How lasts the song Blinding Lights?"      # by The Weeknd 
+    user_input = "How lasts the song Blinding Lights by The Weeknd?"      # by The Weeknd 
     run_pipeline(user_input)
     
     # with open(USER_INPUT, "r") as file:

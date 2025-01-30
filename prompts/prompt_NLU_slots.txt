@@ -2,6 +2,7 @@ Extract slots based on the provided user input and identified intents for a Spot
 Is CRUCIAL that you extract slot values presents in the user input, but not infer any additional information about the user query:
 e.g. 
 If the user input is like "Give me the duration of Someone Like You" and he doesn't specify any artist, the slot "artist_name" will be null, not "Adele".
+At the same manner, if user input is "Show me my top tracks of the last month." limit will be null since is not specified.
 Follow these rules strictly:
 
 1. Slot Templates: Use these templates for extraction:
@@ -14,6 +15,7 @@ Follow these rules strictly:
 
 2. Explicit Slot Extraction: Extract only slots explicitly mentioned in the user input. If a slot value is not specified, set it to null. 
    Do not infer or add information not in the input.
+   In particular, for user_top_artists and user_top_tracks intents, if the slot limit is not explicitly specified in the input, leave it to null.
    
 3. Consistency: Ensure slots match their intents:
    - Example Input: "What are the genres of the album Divide?"

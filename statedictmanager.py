@@ -1,5 +1,6 @@
 import re
 import json
+from utils import PRINT_DEBUG
 
 class StateDictManager:
     def __init__(self, initial_state=None):
@@ -20,7 +21,8 @@ class StateDictManager:
             # print("State dictionary is valid.")
             return True
         except (TypeError, ValueError) as e:
-            print(f"State dictionary is invalid: {e}")
+            if PRINT_DEBUG:
+                print(f"State dictionary is invalid: {e}")
             return False
 
     def correct_structure(self):
@@ -29,14 +31,16 @@ class StateDictManager:
             self.state_dict = json.loads(json_string)
             # print("State dictionary corrected.")
         except Exception as e:
-            print(f"Failed to correct state dictionary: {e}")
+            if PRINT_DEBUG:
+                print(f"Failed to correct state dictionary: {e}")
 
     def update_section(self, section, data):
         if section in self.state_dict:
             self.state_dict[section].update(data)
             # print(f"Updated section '{section}' with data: {data}")
         else:
-            print(f"Section '{section}' not found in state_dict, adding it.")
+            if PRINT_DEBUG:
+                print(f"Section '{section}' not found in state_dict, adding it.")
             self.state_dict[section] = data
             
     def extract_valid_json(self, raw_string):
@@ -46,9 +50,11 @@ class StateDictManager:
             try:
                 return json.loads(json_match.group())
             except json.JSONDecodeError:
-                print("Extracted content is not valid JSON.")
+                if PRINT_DEBUG:
+                    print("Extracted content is not valid JSON.")
                 return None
-        print("No valid JSON content found.")
+        if PRINT_DEBUG:
+            print("No valid JSON content found.")
         return None
 
     def empty_section(self, section):
@@ -57,7 +63,8 @@ class StateDictManager:
             self.state_dict[section] = {}
             # print(f"Section '{section}' has been emptied.")
         else:
-            print(f"Section '{section}' not found in state_dict.")
+            if PRINT_DEBUG:
+                print(f"Section '{section}' not found in state_dict.")
 
     def delete_section(self, section):
         """Deletes a section completely from the state dictionary."""
@@ -65,8 +72,10 @@ class StateDictManager:
             del self.state_dict[section]
             # print(f"Section '{section}' has been deleted from the state_dict.")
         else:
-            print(f"Section '{section}' not found in state_dict. Nothing to delete.")
+            if PRINT_DEBUG:
+                print(f"Section '{section}' not found in state_dict. Nothing to delete.")
             
 
     def display(self):
-        print(json.dumps(self.state_dict, indent=4))
+        if PRINT_DEBUG:
+            print(json.dumps(self.state_dict, indent=4))

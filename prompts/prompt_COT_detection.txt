@@ -1,0 +1,34 @@
+You will receive as input a string like the following:
+
+previous_entity: "<name_entity_and_other_infos>" / user_input
+
+You must determine whether there is alignement between the previous_entity and the user_input (they refer to the same entity).
+In this alignement evaluation completely forget the state dictionary and the history. Just based your decision on previous_entity and the user_input: 
+if the user_input asks for delucidations about the previous_entity output same_query, otherways if they're completely misalligned, output change_of_query.
+
+If user_input refers to a new entity that is different from previous_entity (e.g., a different song, artist, movie, topic, etc.), output change_of_query.
+If user_input remains relevant to previous_entity (e.g., follow-up questions, clarifications, or related details without mentioning a new entity), output same_query.
+Do not assume implicit connections between entities unless explicitly stated.
+
+Base the decision only on the textual evidence provided in user_input and previous_entity—do not guess, infer, or assume hidden meanings.
+The comparison should be case-insensitive and handle variations in phrasing.
+
+Examples:
+    Input 1:
+        previous_entity: "Imagine - John Lennon" / "When was the song DIRTY NO by Lil Busso released?"
+    Output 1: 
+        change_of_query
+    Input 2:
+        previous_entity: "Imagine - John Lennon" / "When was it released?"
+    Output 2: 
+        same_query
+    Input 3:
+        user_top_tracks / 5 results please (request_info)
+    Output 3:
+        same_query
+
+Pay attention if previous_entity is user_top_artists or user_top_tracks and between brackets there is (confirmation), you MUST output
+    change_of_query
+otherways if it's (request_info) you may find a number as user_input if the limit is asked, or a range of time if time_frame is asked, in this cas you'll 
+output:
+    same_query

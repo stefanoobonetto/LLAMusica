@@ -47,15 +47,19 @@ Is FUNDAMENTAL that you identify only the intents from the provided list, if you
     - Intent 2: "<identified intent>"
     - ...
 
-7. Examples:
+7. out_of_domain: output it only if you're sure that the user input doesn't represent any of the possible intents listed before. Notice that out_of_domain intent
+   should be very rare.
+
+8. Examples:
     Input: 
         What is the album and artist for the song Bad Guy?
     Output: 
         - Intent: song_info 
 
-    Input: Can you limit the results to the top 3?
-        - intent: "user_top_artists"
-        - time_frame: "medium_term"
-        - limit: 10
+    Input: How many followers does Fracesco Guccini have?
     Output: 
-        - Intent: "user_top_artists" 
+        - Intent: "artist_info"
+
+    Input: What's the weather today in Rennes?
+    Output:
+        - Intent: "out_of_domain" 

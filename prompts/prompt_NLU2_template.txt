@@ -40,7 +40,7 @@ RULES FOR UPDATING THE state_dict:
        "NLG": {"Did you mean Blinding Lights by The Weeknd?"}  
    }  
    slots_to_update: ["artist_name"]  
-   user_input: "Yes"  
+   user_input: "Yes (request_info)"  
 
    Output:  
    -"artist_name": "The Weeknd"  
@@ -74,7 +74,7 @@ RULES FOR UPDATING THE state_dict:
        "NLG": {"The song Blinding Lights by The Weeknd lasts 3 minutes and 20 seconds. Would you want to know more about it?"}  
    }  
    slots_to_update: ["duration"]  
-   user_input: "When has it been released?"  
+   user_input: "When has it been released? (confirmation)"  
 
    Output:  
    -"duration": "200"  

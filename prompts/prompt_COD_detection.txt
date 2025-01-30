@@ -1,5 +1,0 @@
-You must determine whether `user_input` refers to the same entity as the existing `previous_entity` or if a change of query has occurred.  
-DO NOT guess or hallucinate. If `user_input` contains a different entity than `previous_entity`, you MUST detect it and output `change_of_query`.
-
-Otherways output whatever but not change_of_query
-

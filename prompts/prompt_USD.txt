@@ -1,65 +1,100 @@
-You have to update the `NLU` section of the `state_dict` based on `user_input` and `slots_to_update`.  
+You need to update the slots in the slots_to_update list based on the user_input and the state_dict. Follow these rules:
 
-Rules for Updating Slots:  
+1. Output the slots to update with the following formattation, no additional information or comments:
+        - "slot1": "new_value1"
+        - "slot2": "new_value2"
+        - ...
+    Don't add any other JSON structure, simply this list with "key": "value".
+    Don't output the state_dict or the user_input or the slots_to_update list. Just:
+        - "slot1": "new_value1"
+        - "slot2": "new_value2"
+        - ...
+    Is FUNDAMENTAL.
+    Don't allucinate.
 
-1. Handling (request_info) Cases  
-   - If `user_input` ends with (request_info) and the user confirms:  
-     - Update the specified slots using values from `GK`.  
-     - Remove the updated slots from the "details" list in `state_dict`.  
-     - Output only the updated slots in the format:
+2. Handling (request_info) Cases  
+    - If `user_input` ends with (request_info) and the user confirms:  
+        - Update the specified slots using values from `GK`.  
+        - Remove the updated slots from the "details" list in `state_dict`.  
+        - Output only the updated slots in the format:
            -"slot1": "new_value1"
            -"slot2": "new_value2"
    
    Example:  
-   Input:  
-        state_dict: {
-            "NLU": {
-                "song_info": {
-                    "slots": {
-                        "song_name": "Blinding Lights",
-                        "artist_name": null,
-                        "details": ["duration"]
+    Input:  
+            state_dict: {
+                "NLU": {
+                    "song_info": {
+                        "slots": {
+                            "song_name": "Blinding Lights",
+                            "artist_name": null,
+                            "details": ["duration"]
+                        }
                     }
-                }
-            },
-            ...,
-            "GK": {"artist_name": "The Weeknd"}
-        }
-        slots_to_update: ["artist_name"]
-        user_input: "Yes"
-    
-    Output:
-        - "artist_name": "The Weeknd"
+                },
+                ...,
+                "GK": {"artist_name": "The Weeknd"}
+            }
+            slots_to_update: ["artist_name"]
+            user_input: "Yes (request_info)"
+        
+        Output:
+            - "artist_name": "The Weeknd"
 
-2. Handling (confirmation) Cases  
-- If `user_input` ends with (confirmation) and the intent remains the same:  
-  - Update the specified slots with values from `GK`.  
-  - Add any new details requested by the user to the "details" list.  
-  - Output all updated slots in the required format.  
+3. Handling (confirmation) Cases  
+    - If `user_input` ends with (confirmation):  
+        - Update the specified slots with values from `GK`.  
+        - Add any new details requested by the user to the "details" list. Remember that `details` list can include multiple values based on the intent:
+            - For `song_info`: [popularity, release_date, duration, album, artist, genres, all].
+            - For `artist_info`: [followers, popularity, genres, all].
+            - For `album_info`: [genres, release_date, total_tracks, all].  
+        - Is FUNDAMENTAL that the details list is updated effectively with a list of objects such as written above (w.r.t. the current intent).
+        - Remember that when you update the details list you're representing what the user wants to know, you don't have to give him the answer. For this 
+          reason don't try to infer new informations, simply represent user's query.
+        - Output all updated slots in the required format.  
 
     Example:
-    Input:  
-    state_dict: {
-        "NLU": {
-            "song_info": {
-                "slots": {
-                    "song_name": "Blinding Lights",
-                    "artist_name": "The Weeknd",
-                    "details": ["duration"]
-                }
+        Input:  
+            state_dict: {
+                "NLU": {
+                    "song_info": {
+                        "slots": {
+                            "song_name": "Blinding Lights",
+                            "artist_name": "The Weeknd",
+                            "details": ["duration"]
+                        }
+                    }
+                },
+                ...,
+                "GK": {"duration": 200}
             }
-        },
-        ...,
-        "GK": {"duration": 200}
-    }
-    slots_to_update: ["duration", "details"]
-    user_input: "When has it been released?"
+            slots_to_update: ["duration", "details"]
+            user_input: "When has it been released? (confirmation)"
 
-    Output:  
-        - "duration": "200" 
-        - "details": ["release_date"]
+        Output:  
+            - "duration": "200" 
+            - "details": ["release_date"]
 
+        Input:  
+            state_dict: {
+                "NLU": {
+                    "song_info": {
+                        "slots": {
+                            "song_name": "Imagine",
+                            "artist_name": "John Lennon",
+                            "details": ["album"]
+                        }
+                    }
+                },
+                ...,
+                "GK": {"album": "Imagine"}
+            }
+            slots_to_update: ["album", "details"]
+            user_input: "How long does it last? (confirmation)"
 
+        Output:  
+            - "album": "Imagine" 
+            - "details": ["duration"]
 
 
 

@@ -1,6 +1,8 @@
 import re
 import os
+import sys
 import json
+import textwrap
 
 intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "out_of_domain"]
 PROMPT_NLU = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU.txt")
@@ -9,8 +11,9 @@ PROMPT_NLU_SLOTS = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_s
 PROMPT_DM = os.path.join(os.path.dirname(__file__), "prompts/prompt_DM.txt")
 PROMPT_NLG = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLG.txt")
 PROMPT_USD = os.path.join(os.path.dirname(__file__), "prompts/prompt_USD.txt")
-PROMPT_COD_DETECTION = os.path.join(os.path.dirname(__file__), "prompts/prompt_COD_detection.txt")
+PROMPT_COT_DETECTION = os.path.join(os.path.dirname(__file__), "prompts/prompt_COT_detection.txt")
 
+PRINT_DEBUG = False
 
 info_intents = ["artist_info", "song_info", "album_info"]
 
@@ -21,7 +24,7 @@ correspondences_intents = {
 }
 
 info_entity = {
-    "artist_info": "artist_name",
+    "artist_info": ["artist_name"],
     "song_info": ["song_name", "artist_name"],
     "album_info": ["album_name", "artist_name"]
 }
@@ -34,16 +37,16 @@ def split_intent(input_string):
         return action, intent
     else:
         raise ValueError("Invalid input string format. Expected format: 'action(intent)'")
-
-    return action, intent
     
-def get_current_intent(state_dict):
-    next_best_action = state_dict["DM"]["next_best_action"]
+def get_current_intent(state_dict=None, next_best_action=None):
+    if state_dict:
+        next_best_action = state_dict["DM"]["next_best_action"]
     _, intent = split_intent(next_best_action)
     return intent
 
-def get_current_action(state_dict):
-    next_best_action = state_dict["DM"]["next_best_action"]
+def get_current_action(state_dict=None, next_best_action=None):
+    if state_dict:
+        next_best_action = state_dict["DM"]["next_best_action"]
     action, _ = split_intent(next_best_action)
     return action
 
@@ -91,7 +94,8 @@ def check_slots(NLU_component, slots):
                 errors.append(f"Missing or invalid slot '{slot}' for intent '{intent}'")
 
     if errors:
-        print("\n".join(errors))
+        if PRINT_DEBUG:
+            print("\n".join(errors))
         return False
     return True
 
@@ -153,19 +157,22 @@ def fix_json_string(json_string):
         # Step 8: Parse the corrected JSON
         return json.loads(json_string)
     except json.JSONDecodeError as e:
-        print(f"Failed to fix JSON: {e}")
+        if PRINT_DEBUG:
+            print(f"Failed to fix JSON: {e}")
         return False
     
-def is_valid_response(response, check_type):
+def validate_DM(response, check_type):
     """Check if the response is valid based on type and arguments."""
 
     try:
         parsed_response = fix_json_string(response)  
         if not parsed_response:
-            print("Failed to parse JSON response.")
+            if PRINT_DEBUG:
+                print("Failed to parse JSON response.")
             return False
     except json.JSONDecodeError:
-        print("Failed to parse JSON response.")
+        if PRINT_DEBUG:
+            print("Failed to parse JSON response.")
         return False
     # print("Inside validation, now checking response...", parsed_response, "\nwith check type: ", check_type)
     
@@ -176,9 +183,9 @@ def is_valid_response(response, check_type):
     # qua bisogna fare un check sull'intent estratto da DM per next_best_action e vedere se è user_top_tracks o user_top_artists va bene che non ci sia details    
     next_best_action = parsed_response["next_best_action"]
     # print("Next best action: ", next_best_action)
-    match = re.search(r'\((.*?)\)', next_best_action)
-    if match:
-        intent = match.group(0)
+    
+    action = get_current_action(next_best_action=next_best_action) 
+    intent = get_current_intent(next_best_action=next_best_action)
     
     # Safely check if "details" exists and is not empty
     if not parsed_response["args"].get("details"): 
@@ -195,49 +202,57 @@ def is_valid_response(response, check_type):
     
     return False
 
-def check_null_slots_and_update_state_dict(state_dict, out_NLU2, intents_extracted, slot_to_update):
+def check_null_slots_and_update_state_dict(state_dict, out_USD, intents_extracted, slot_to_update):
     # out_NLU2 = str(fix_json_string(out_NLU2))  # Ensure the string format is correct
     
-    slot_to_update.append("details")            # Add 'details' to the list of slots to update, so that if the action is confirmation and 
+    # slot_to_update.append("details")            # Add 'details' to the list of slots to update, so that if the action is confirmation and 
                                                 # user asked for something new, it can update the details 
     
-    for intent in intents_extracted:                                                    # nel caso di confirmation voglio aggiornare anche i details
-        for detail in state_dict["NLU"][intent]["slots"]["details"]:
-            if detail not in slot_to_update:            
-                slot_to_update.append(detail)
+    # for intent in intents_extracted:                                                    # nel caso di confirmation voglio aggiornare anche i details
+    #     for detail in state_dict["NLU"][intent]["slots"]["details"]:
+    #         if detail not in slot_to_update:            
+    #             slot_to_update.append(detail)
 
-    
+    if PRINT_DEBUG:
+        print("\n\nSlots to update: ", slot_to_update)
+        print("\n\nout_USD: ", out_USD)
+
     for intent in intents_extracted:
-        for slot in state_dict["NLU"][intent]["slots"]:
-            if slot in slot_to_update:
-                # Use regex to extract the value of the slot
-                match = re.search(rf'.*{slot}.*:\s*(.+)', str(out_NLU2))
-                
+            for slot in slot_to_update:
+                if intent in info_intents and slot == "details":
+                        # Capture everything inside [ ] including brackets
+                        match = re.search(rf'.*{slot}.*:\s*(\[[^\]]*\])', str(out_USD))
+                else:
+                    # Capture standard values
+                    match = re.search(rf'.*{slot}.*:\s*["\']?(.+?)["\']?(?=\s|$)', str(out_USD))                
+            
                 if match:
-                    new_value = match.group(1)  # Extract the captured value
-                    state_dict["NLU"][intent]["slots"][slot] = new_value  # Update state_dict
+                    new_value = match.group(1).strip()  # Extract the captured value and remove spaces
+                                
+                if PRINT_DEBUG:
+                    print(f"Catch new value for {slot}: {new_value}")
+                state_dict["NLU"][intent]["slots"][slot] = new_value  # Update state_dict
 
-    
-    
+        
     return state_dict
 
 def get_slot_to_update(state_dict):
     slot_to_update = []
-        
-    for slot in state_dict["DM"]["args"]["details"]:
-        slot_to_update.append(slot)
+    
+    if "details" in state_dict["DM"]["args"]:   
+        for slot in state_dict["DM"]["args"]["details"]:
+            slot_to_update.append(slot)
     
     return slot_to_update
 
 def validate_USD(state_dict, out_NLU2, slot_to_update, intents_extracted, action):
-    
-    slot_to_update.append("details")  
-    
+        
     if action == "confirmation":
         for intent in intents_extracted:                                                    # nel caso di confirmation voglio aggiornare anche i details
-            for detail in state_dict["NLU"][intent]["slots"]["details"]:
-                if detail not in slot_to_update:            
-                    slot_to_update.append(detail)
+            if intent in info_intents:
+                for detail in state_dict["NLU"][intent]["slots"]["details"]:
+                    if detail not in slot_to_update:            
+                        slot_to_update.append(detail)
                     
     for slot in slot_to_update:
     # Use regex to extract the value of the slot
@@ -246,65 +261,6 @@ def validate_USD(state_dict, out_NLU2, slot_to_update, intents_extracted, action
         if not match: 
                return False
     return True     
-
-# def validate_out_NLU2(out_NLU2, slot_to_update, intents_extracted):
-    
-#     print("Validating NLU2 output...\n", out_NLU2, "\n\n\n")
-    
-#     if "change_of_intent" in out_NLU2:
-#         return True
-    
-#     out_NLU2 = fix_json_string(out_NLU2)
-    
-#     if not out_NLU2:
-#         return False
-    
-#     mandatory_slots = {
-#         "artist_info": ["artist_name"],
-#         "song_info": ["song_name", "artist_name"],
-#         "album_info": ["album_name", "artist_name"]
-#     }
-    
-#     if "artist_name" in slot_to_update:
-#         slot_to_update = ["artist_name"]
-    
-#     for intent in intents_extracted:
-#         for slot in slot_to_update:
-#             if "slots" not in out_NLU2["NLU"][f"{intent}"] or not slot in out_NLU2["NLU"][f"{intent}"]["slots"] or out_NLU2["NLU"][f"{intent}"]["slots"][slot] in [None, "null"]:
-#                 return False
-#             if intent in info_intents and "details" not in out_NLU2["NLU"][f"{intent}"]["slots"]:
-#                 return False
-#             # if "NLG" in out_NLU2 or "DM" in out_NLU2 or "GK" in out_NLU2:
-#             #     return False
-#         if not all(slot in out_NLU2["NLU"][f"{intent}"]["slots"] for slot in mandatory_slots[intent]):
-#             return False
-#     return True
-
-def build_prompt_for_COD(state_dict, intents_extracted):
-    prev_entity = ""    
-    
-    for intent in intents_extracted:
-        if intent in info_intents:
-            prev_entity += " - ".join(
-                state_dict["NLU"][intent]["slots"][elem]
-                for intent in intents_extracted
-                for elem in info_entity[intent]
-            ) + "\n"
-        else:
-            prev_entity += intent
-        
-    print("PREVIOUS ENTITY: ", prev_entity)
-    
-    prefix = "previous_entity: \n" + str(prev_entity)
-    
-    with open(PROMPT_COD_DETECTION, "r") as file:
-        template = file.read()
-    
-    prompt = prefix + "\n\n" + template
-    
-    print("PROMPT: \n\n", str(prompt)) 
-
-    return prompt
 
 def build_prompt_for_USD(state_dict, slot_to_update):    
     prefix = "slot_to_update: " + str(slot_to_update) + "\nstate_dict: \n" + str(state_dict)
@@ -317,3 +273,57 @@ def build_prompt_for_USD(state_dict, slot_to_update):
     # print("PROMPT: \n\n", str(prompt)) 
 
     return prompt
+
+
+def get_terminal_width():
+    """Returns the width of the terminal, with a fallback to 80 if unknown."""
+    return os.get_terminal_size().columns if sys.stdout.isatty() else 80
+
+def center_text(text):
+    """Centers a given text based on terminal width."""
+    term_width = get_terminal_width()
+    centered_lines = []
+    
+    for line in text.split("\n"):
+        padding = (term_width - len(line)) // 2
+        centered_lines.append(" " * max(0, padding) + line)
+
+    return "\n".join(centered_lines)
+
+def clear_last_line():
+    """Clears the last line written in the terminal."""
+    sys.stdout.write("\033[F")  # Moves the cursor up one line
+    sys.stdout.write("\033[K")  # Clears the current line
+    sys.stdout.flush()
+
+def print_system(message):
+    """Prints a system message anchored to the left with a speech bubble, taking half of the terminal width."""
+    term_width = get_terminal_width()
+    width = term_width // 2 - 4  # Use half the terminal width
+    wrapped_message = "\n".join(textwrap.fill(line, width) for line in message.split("\n"))  # Preserve \n
+    border = "─" * (width + 2)
+
+    print("\n\n")
+    print(f"┌{border}┐")  # Top border
+    for line in wrapped_message.split("\n"):
+        print(f"│ {line.ljust(width)} │")  # Left-aligned content
+    print(f"|/{'─' * (width + 1)}┘")  # Speech bubble tail
+
+def input_user(prompt):
+    """Gets user input, clears it, and prints it in a right-aligned speech bubble, taking half of the terminal width."""
+    user_message = input(prompt)  # User types message
+    clear_last_line()  # Clears the input after pressing Enter
+
+    term_width = get_terminal_width()
+    width = term_width // 2 - 4  # Use half the terminal width
+    wrapped_message = "\n".join(textwrap.fill(line, width) for line in user_message.split("\n"))
+    border = "─" * (width + 2)
+    padding = " " * (term_width // 2)  # Right-align bubble to half of the terminal
+
+    print("\n\n")
+    print(f"{padding}┌{border}┐")  # Top border
+    for line in wrapped_message.split("\n"):
+        print(f"{padding}│ {line.ljust(width)} │")  # Right-aligned content
+    print(f"{padding}└{'─' * (width + 1)}\|")  # Speech bubble tail
+
+    return user_message  # Return user input if needed

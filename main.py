@@ -11,38 +11,24 @@ USER_INPUT = "user_input.txt"
 intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "out_of_domain"]
 
 def build_GK():
-    DM_component_part = state_manager.state_dict.get("DM", {})
-        
-    if isinstance(DM_component_part, dict):
-        # dict to a JSON string
-        DM_component_part = json.dumps(DM_component_part)
+    DM_component_part = json.dumps(state_manager.state_dict.get("DM", {}))
     
     # this substitution step is crucial since the spotify API requires the key "artists" instead of "artist_name"    
     DM_component_part = DM_component_part.replace("artist_name", "artists") 
     
     DM_component_part = fix_json_string(DM_component_part)
 
-    corresponding_actions = {
-        "artist_info": get_artist_info,
-        "song_info": get_song_info,
-        "album_info": get_album_info,
-        "user_top_tracks": get_user_top_tracks,
-        "user_top_artists": get_user_top_artists,
-        "get_recommendations": get_recommendations,
-    }
-
     next_best_action = DM_component_part["next_best_action"]
-    # print(f"\nNext best action: {next_best_action}")  
+    # if PRINT_DEBUG:
+    #       print(f"\nNext best action: {next_best_action}")  
 
     action, intent = split_intent(next_best_action)
-    # print(f"\n- action: {action} \n- intent: {intent}")
+    # if PRINT_DEBUG:
+    #       print(f"\n- action: {action} \n- intent: {intent}")
 
     if action == "confirmation":
         if PRINT_DEBUG:
             print(f"\n{intent} requested. Fetching...")
-        
-        # if intent == "user_top_tracks" or intent == "user_top_artists":
-        #     DM_component_part["args"]["limit"] = int(DM_component_part["args"]["limit"])
 
         info = corresponding_actions.get(intent)(DM_component_part["args"])
 
@@ -137,12 +123,13 @@ def process_NLU_intent_and_slots(user_input):
         print("-"*95)
         print("llama3.2 output [SLOTS]:\n", out_NLU_slots)
 
-    intents_extracted = final_check_NLU(intents_extracted)          # check intents extracted if they're valid 
+    intents_extracted = final_check_NLU(state_manager.state_dict, intents_extracted)          # check intents extracted if they're valid 
     
     return state_manager.state_dict, intents_extracted
 
 def query_DM_model_with_validation(system_prompt, intents_extracted):
 
+    # here we check which is the expected type of the next_best_action, we'll use it then to validate the output of the DM
     for intent in intents_extracted:
         if "details" in state_manager.state_dict["NLU"][intent]["slots"]:
             check_type = "request_info" if any("artist_name" in state_manager.state_dict["NLU"][intent]["slots"]["details"] for intent in intents_extracted) or state_manager.check_none_values() else "confirmation"
@@ -150,17 +137,8 @@ def query_DM_model_with_validation(system_prompt, intents_extracted):
             check_type = "request_info" if state_manager.check_none_values() else "confirmation"
     
     while True:
-        
-        # print("\n\n\nGiving to DM as input state_dict: \n\n\n", state_manager.state_dict)
-        
-        # with open(system_prompt, "r") as file:
-        #     content = file.read()
-        
-        # print("\n\n\n\n\nQuering DM model...with prompt: \n", content, "\n\nand input file: \n", str(state_manager.state_dict), "\n\n")
-        
         out_DM = model_query.query_model(system_prompt=system_prompt, input_file=str(state_manager.state_dict))
         
-        # print("\n\nDM response to be validated: \n\n\n", response)
         if validate_DM(out_DM, check_type):
             break
         if PRINT_DEBUG:
@@ -169,11 +147,12 @@ def query_DM_model_with_validation(system_prompt, intents_extracted):
     return out_DM
 
 def process_DM(intents_extracted):
+    
     dm_data = {}
+    
     while dm_data == {}:
+        
         out_DM = query_DM_model_with_validation(PROMPT_DM, intents_extracted)
-        if PRINT_DEBUG:
-            print("Extracting DM data...")
         
         try:
             json_match = re.search(r'\{.*\}', out_DM, re.DOTALL)    # Match anything that starts and ends with braces
@@ -193,19 +172,19 @@ def process_DM(intents_extracted):
 
 def process_NLG():
     out_NLG = model_query.query_model(system_prompt=PROMPT_NLG, input_file=str(state_manager.state_dict))    
-    
-    if PRINT_DEBUG:
-        print("\n\n\nllama3.2 output [NLG]:\n\n")
-        print(out_NLG)
+        
     state_manager.update_section("NLG", out_NLG)
     
     if PRINT_DEBUG:
         print("State Dictionary after NLG component processing:\n")
-        state_manager.display()    
+        state_manager.display()   
+         
     return out_NLG
 
 def process_COT_and_USD(slot_to_update, user_input, intents_extracted):
-    # while True:
+        
+    # COT component will use the previous entity extracted from the NLU component and the current user input to compute the alignement
+    # between the two and determine if there's a change of topic
     
     prev_entity = ""    
     
@@ -224,21 +203,14 @@ def process_COT_and_USD(slot_to_update, user_input, intents_extracted):
 
     if PRINT_DEBUG:
         print("COT_input: ", COT_input)
+        
     out_COT = model_query.query_model(system_prompt=PROMPT_COT_DETECTION, input_file=str(COT_input))
     
     if PRINT_DEBUG:
         print("\n\nAnalyzing user_input through COT component: ", COT_input)
-
-        
-    
-        # if "same_query" in out_COD or "change_of_query" in out_COD:
-        #     break 
-        # print(f"Invalid COD output detected \n{out_COD}\n... retrying...")
-    if PRINT_DEBUG:
         print("result COT --------> ", out_COT, "\n\n")
     
-    
-    if "change_of_query" in out_COT :     # or any(state_manager.state_dict["NLU"][intent]["slots"][correspondences_intents[intent]] not in out_NLU2 for intent in intents_extracted)
+    if "change_of_query" in out_COT :     
         if PRINT_DEBUG:
             print("\n\n\n------> Change of topic detected....\n\n\n")
         state_manager.delete_section("NLU")        
@@ -250,23 +222,18 @@ def process_COT_and_USD(slot_to_update, user_input, intents_extracted):
         while True:
             if "artist_name" in slot_to_update:
                 slot_to_update = ["artist_name"]
-            if "confirmation" in user_input:
-                for intent in intents_extracted:                            # nel caso di confirmation voglio aggiornare anche i details
+            if "confirmation" in user_input:                    # nel caso di confirmation voglio aggiornare anche i details
+                for intent in intents_extracted:                            
                     if intent in info_intents:
                         for detail in state_manager.state_dict["NLU"][intent]["slots"]["details"]:
                            if detail not in slot_to_update:            
                                 slot_to_update.append(detail)
 
             out_USD = model_query.query_model(system_prompt=build_prompt_for_USD(state_manager.state_dict, slot_to_update), input_file=str(user_input))
-            # print("Analyzing out_USD: \n", out_USD)
             
-            if "(request_info)" in user_input and validate_USD(state_manager.state_dict, out_USD, slot_to_update, intents_extracted, "request_info"):
+            if validate_USD(state_manager.state_dict, out_USD, slot_to_update, intents_extracted, f"{get_current_action(state_manager.state_dict)}"):
                 if PRINT_DEBUG:
                     print("\n\n----> request_info in NLU2 output detected... validated user_input...exiting...")
-                break  # Exit the loop if the output is valid
-            elif "(confirmation)" in user_input and validate_USD(state_manager.state_dict, out_USD, slot_to_update, intents_extracted, "confirmation"):
-                if PRINT_DEBUG:
-                    print("\n\n----> confirmation in NLU2 output detected... validated user_input...exiting...")
                 break  # Exit the loop if the output is valid
             if PRINT_DEBUG:
                 print(f"Invalid USD output detected \n{out_USD}\n... retrying...")
@@ -276,18 +243,7 @@ def process_COT_and_USD(slot_to_update, user_input, intents_extracted):
         state_manager.delete_section("GK")
         state_manager.delete_section("NLG")
         return True
-    
-def final_check_NLU(intents_extracted):
-    to_delete = []
-    for intent in intents_extracted:
-        if intent in info_intents and "details" not in state_manager.state_dict["NLU"][intent]["slots"]:
-            del state_manager.state_dict["NLU"][intent]
-            if PRINT_DEBUG:
-                print("\n\n\n------> No details found for ", intent, " intent. Deleting it from the state_dict...")
-            to_delete.append(intent)
-    intents_extracted = [intent for intent in intents_extracted if intent not in to_delete]
-    return intents_extracted        
-    
+        
 def run_pipeline(user_input):
     
     global state_manager, model_query

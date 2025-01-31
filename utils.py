@@ -5,6 +5,8 @@ import time
 import json
 import textwrap
 
+from spoti import *
+
 intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "get_recommendations", "out_of_domain"]
 PROMPT_NLU = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU.txt")
 PROMPT_NLU_INTENTS = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_intents.txt")
@@ -23,6 +25,15 @@ correspondences_intents = {
     "song_info": "song_name",
     "album_info": "album_name"
 }
+
+corresponding_actions = {
+        "artist_info": get_artist_info,
+        "song_info": get_song_info,
+        "album_info": get_album_info,
+        "user_top_tracks": get_user_top_tracks,
+        "user_top_artists": get_user_top_artists,
+        "get_recommendations": get_recommendations,
+    }
 
 info_entity = {
     "artist_info": ["artist_name"],
@@ -56,6 +67,18 @@ def get_current_action(state_dict=None, next_best_action=None):
     if PRINT_DEBUG:
         print("\n\n\nReturning action: ", action, "\n\n")
         return action
+
+def final_check_NLU(state_dict, intents_extracted):
+    to_delete = []
+    for intent in intents_extracted:
+        if intent in info_intents and "details" not in state_dict["NLU"][intent]["slots"]:
+            del state_dict["NLU"][intent]
+            if PRINT_DEBUG:
+                print("\n\n\n------> No details found for ", intent, " intent. Deleting it from the state_dict...")
+            to_delete.append(intent)
+    intents_extracted = [intent for intent in intents_extracted if intent not in to_delete]
+    return intents_extracted        
+
 
 def extract_intents_build_slots_input(user_input, state_dict, out_NLU_intents):
     

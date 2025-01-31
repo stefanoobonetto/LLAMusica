@@ -1,6 +1,7 @@
 import os
 import time
 import glob
+import random
 import spotipy
 from utils import get_terminal_width, center_text, PRINT_DEBUG
 from spotipy.oauth2 import SpotifyOAuth
@@ -29,6 +30,179 @@ SCOPE = (
     "user-read-email",
     "user-read-private"
 )
+
+recommendations = {
+  "pop": [
+    "People, I've been sad - Christine and the Queens",
+    "Mystery of Love - Sufjan Stevens",
+    "Cut Me - Moses Sumney",
+    "Cellophane - FKA twigs",
+    "Retrograde - James Blake",
+    "A Palé - Rosalía",
+    "Bags - Clairo",
+    "All the Stars - Kendrick Lamar & SZA",
+    "Midnight City - M83",
+    "Electric Feel - MGMT",
+    "Supercut - Lorde",
+    "Ocean Eyes - Billie Eilish",
+    "Talia - King Princess",
+    "Somebody Else - The 1975",
+    "Are You Bored Yet? - Wallows ft. Clairo"
+  ],
+  "rock": [
+    "Apocalypse - Cigarettes After Sex",
+    "Weird Fishes/Arpeggi - Radiohead",
+    "Storm - Godspeed You! Black Emperor",
+    "Rattlesnake - King Gizzard & the Lizard Wizard",
+    "Concorde - Black Country, New Road",
+    "Your Hand In Mine - Explosions in the Sky",
+    "Reptilia - The Strokes",
+    "How Soon Is Now? - The Smiths",
+    "Paranoid Android - Radiohead",
+    "Where Is My Mind? - Pixies",
+    "Everlong - Foo Fighters",
+    "Lithium - Nirvana",
+    "Do I Wanna Know? - Arctic Monkeys",
+    "1979 - The Smashing Pumpkins",
+    "Baba O'Riley - The Who"
+  ],
+  "jazz": [
+    "Little One - Immanuel Wilkins",
+    "Lanquidity - Sun Ra",
+    "The Epic - Kamasi Washington",
+    "I'll Remember April - Brad Mehldau",
+    "Doomed - Moses Sumney",
+    "Celestial Blues - Andy Bey",
+    "Take Five - Dave Brubeck",
+    "Blue in Green - Miles Davis",
+    "Feeling Good - Nina Simone",
+    "Naima - John Coltrane",
+    "Autumn Leaves - Bill Evans",
+    "Lush Life - Johnny Hartman & John Coltrane",
+    "Speak No Evil - Wayne Shorter",
+    "Cantaloupe Island - Herbie Hancock",
+    "Misty - Erroll Garner"
+  ],
+  "electronic": [
+    "BIPP - SOPHIE",
+    "An Eagle in Your Mind - Boards of Canada",
+    "Singularity - Jon Hopkins",
+    "Windowlicker - Aphex Twin",
+    "Kid A - Radiohead",
+    "Kong - Bonobo",
+    "Ghosts 'n' Stuff - Deadmau5",
+    "Xtal - Aphex Twin",
+    "Acid Tracks - Phuture",
+    "Night Owl - Metronomy",
+    "Opus - Eric Prydz",
+    "Elysium - Porter Robinson",
+    "Music Sounds Better With You - Stardust",
+    "Cerulean - Baths",
+    "Divinity - Porter Robinson ft. Amy Millan"
+  ],
+  "hiphop": [
+    "DUCKWORTH. - Kendrick Lamar",
+    "The Light - Common",
+    "Black Skinhead - Kanye West",
+    "The Message - Nas",
+    "John Muir - ScHoolboy Q",
+    "Shook Ones Pt. II - Mobb Deep",
+    "Alright - Kendrick Lamar",
+    "95.south - J. Cole",
+    "Can’t Tell Me Nothing - Kanye West",
+    "Ms. Jackson - Outkast",
+    "Grindin’ - Clipse",
+    "One Mic - Nas",
+    "Jesus Walks - Kanye West",
+    "Passin' Me By - The Pharcyde",
+    "Power - Kanye West"
+  ],
+  "r&b": [
+    "Superpower - Beyoncé ft. Frank Ocean",
+    "Say My Name - Destiny's Child",
+    "When We - Tank",
+    "Thinkin Bout You - Frank Ocean",
+    "Untitled (How Does It Feel) - D'Angelo",
+    "Adorn - Miguel",
+    "Location - Khalid",
+    "Come Through and Chill - Miguel ft. J. Cole",
+    "Cranes in the Sky - Solange",
+    "No Guidance - Chris Brown ft. Drake",
+    "Focus - H.E.R.",
+    "Love Galore - SZA ft. Travis Scott",
+    "Let Me Love You - Mario",
+    "Nice & Slow - Usher",
+    "Prototype - Outkast"
+  ],
+  "soul": [
+    "A Change Is Gonna Come - Sam Cooke",
+    "Let's Stay Together - Al Green",
+    "What's Going On - Marvin Gaye",
+    "I Heard It Through the Grapevine - Marvin Gaye",
+    "Respect - Aretha Franklin",
+    "Ain't No Mountain High Enough - Marvin Gaye & Tammi Terrell",
+    "Try a Little Tenderness - Otis Redding",
+    "Superstition - Stevie Wonder",
+    "The Makings of You - Curtis Mayfield",
+    "For Once in My Life - Stevie Wonder",
+    "I Put a Spell on You - Nina Simone",
+    "Take Me to the River - Al Green",
+    "Let's Get It On - Marvin Gaye",
+    "These Arms of Mine - Otis Redding",
+    "The Way - Jill Scott"
+  ],
+  "classical": [
+    "Clair de Lune - Claude Debussy",
+    "Moonlight Sonata - Ludwig van Beethoven",
+    "Nocturne Op. 9 No. 2 - Frédéric Chopin",
+    "The Four Seasons: Spring - Antonio Vivaldi",
+    "Canon in D - Johann Pachelbel",
+    "Gymnopédie No. 1 - Erik Satie",
+    "Adagio for Strings - Samuel Barber",
+    "Prelude in C Major - Johann Sebastian Bach",
+    "Swan Lake Theme - Pyotr Ilyich Tchaikovsky",
+    "Boléro - Maurice Ravel",
+    "Requiem: Lacrimosa - Wolfgang Amadeus Mozart",
+    "Carmen: Habanera - Georges Bizet",
+    "Hungarian Rhapsody No. 2 - Franz Liszt",
+    "Air on the G String - Johann Sebastian Bach",
+    "Symphony No. 9: Ode to Joy - Ludwig van Beethoven"
+  ],
+  "folk": [
+    "The Boxer - Simon & Garfunkel",
+    "Pink Moon - Nick Drake",
+    "The Night We Met - Lord Huron",
+    "Home - Edward Sharpe & The Magnetic Zeros",
+    "Fast Car - Tracy Chapman",
+    "Helplessness Blues - Fleet Foxes",
+    "Take Me Home, Country Roads - John Denver",
+    "Skinny Love - Bon Iver",
+    "Wagon Wheel - Old Crow Medicine Show",
+    "Ho Hey - The Lumineers",
+    "Rivers and Roads - The Head and the Heart",
+    "Ophelia - The Lumineers",
+    "Atlantic City - Bruce Springsteen",
+    "Blowin' in the Wind - Bob Dylan",
+    "Big Yellow Taxi - Joni Mitchell"
+  ],
+  "reggae": [
+    "No Woman, No Cry - Bob Marley & The Wailers",
+    "Israelites - Desmond Dekker",
+    "Sweat (A La La La La Long) - Inner Circle",
+    "Here I Come - Barrington Levy",
+    "Red Red Wine - UB40",
+    "One Love - Bob Marley & The Wailers",
+    "Bad Boys - Inner Circle",
+    "Kingston Town - UB40",
+    "Buffalo Soldier - Bob Marley & The Wailers",
+    "Boom Shakalak - Apache Indian",
+    "54-46 Was My Number - Toots and the Maytals",
+    "Pass the Dutchie - Musical Youth",
+    "I Shot the Sheriff - Eric Clapton",
+    "D'yer Mak'er - Led Zeppelin",
+    "Sun Is Shining - Bob Marley"
+  ]
+}
 
 class Artist:
     def __init__(self, id, name, genres, followers, popularity, spotify_url, images, top_tracks=None):
@@ -148,8 +322,41 @@ def authenticate(force_auth=False):
         scope="user-library-read user-top-read playlist-read-private",
         show_dialog=force_auth
     ))
-    print(center_text("\nAuthentication successful!\n"))
     return sp
+
+def get_recommendations(args):
+    """
+    Get a list of randomly selected recommended songs based on the genre provided.
+
+    Parameters:
+        args (dict): Dictionary containing:
+            - genre (str): The genre of the songs to recommend.
+            - limit (int): The number of songs to recommend.
+
+    Returns:
+        list[str]: A list of randomly selected recommended songs.
+    """
+    genre = args.get("genre")  # Use .get() to avoid KeyError
+    limit = int(args.get("limit"))  # Use .get() to avoid KeyError
+    
+    if PRINT_DEBUG:     
+        print("ARGS: ", args)  # Debugging
+        print("Genre: ", genre, " - Limit: ", limit)  # Debugging
+    
+    # Validate genre
+    if genre not in recommendations:
+        if PRINT_DEBUG: 
+            print(f"❌ Genre '{genre}' not found in recommendations.")  # Debugging
+        return []
+
+    # Validate limit
+    if not isinstance(limit, int) or limit <= 0:
+        if PRINT_DEBUG: 
+            print(f"❌ Invalid limit: {limit}")  # Debugging
+        return []
+
+    # Get a random sample of songs
+    return random.sample(recommendations[genre], min(limit, len(recommendations[genre])))
 
 #  SEARCH A GIVEN SONG AND RETURN IT OR RETURN THE DETAIL ASKED FOR
 

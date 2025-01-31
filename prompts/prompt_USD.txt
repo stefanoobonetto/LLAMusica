@@ -40,6 +40,9 @@ You need to update the slots in the slots_to_update list based on the user_input
         
         Output:
             - "artist_name": "The Weeknd"
+    
+    - Pay attention when in the slots_to_update is present the limit slot: you have to be precise in extracting the exact number of results 
+      the user wants to project.
 
 3. Handling (confirmation) Cases  
     - If `user_input` ends with (confirmation):  

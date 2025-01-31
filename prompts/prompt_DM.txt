@@ -48,6 +48,7 @@ Rules for Determining the Next Best Action:
      - For "song_info", include "song_name".
      - For "artist_info", include "artist_name".
      - For "album_info", include "album_name".
+     - For "get_recommendations", include "genre".
 
 5. Examples:
    Input: { "NLU": { "artist_info": { "slots": { "artist_name": "The Weeknd", "details": ["followers", "popularity"] } } } }
@@ -58,6 +59,9 @@ Rules for Determining the Next Best Action:
 
    Input: { "NLU": { "album_info": { "slots": { "album_name": "Red", "artist_name": null, "details": ["release_date", "total_tracks"] } } } }
    Output: { "next_best_action": "request_info(album_info)", "args": { "album_name": "Red", "details": ["artist_name"] } }
+
+   Input:  {"NLU": { "get_recommendations": {"slots": {"genre": "jazz", "limit": null}}}}
+   Output: { "next_best_action": "request_info(get_recommendations)", "args": { "details": ["limit"] } }
 
    Input: { "NLU": { "song_info": { "slots": { "song_name": "Imagine", "artist_name": null, "details": ["artist_name", "release_date"] } } } }
    Output: { "next_best_action": "confirmation(song_info)", "args": { "song_name": "Imagine", "artist_name": null, "details": ["artist_name", "release_date"] } }

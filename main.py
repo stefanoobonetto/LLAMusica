@@ -27,7 +27,8 @@ def build_GK():
         "song_info": get_song_info,
         "album_info": get_album_info,
         "user_top_tracks": get_user_top_tracks,
-        "user_top_artists": get_user_top_artists
+        "user_top_artists": get_user_top_artists,
+        "get_recommendations": get_recommendations,
     }
 
     next_best_action = DM_component_part["next_best_action"]
@@ -48,7 +49,7 @@ def build_GK():
         if info:
             # print(f"\Info fetched for {intent}:")
             if PRINT_DEBUG:
-                print(info)
+                print("Info extracted for intent ", intent, ": ", info)
 
             if intent in info_intents and intent != "artist_info":
                 info = {k.replace("artists", "artist_name"): v for k, v in info.items()}
@@ -81,33 +82,6 @@ def build_GK():
             print(f"\nUnsupported action: {action}.")
         return state_manager.state_dict
 
-# def check_duplicates(intents_extracted):
-#     to_keep = {}  # Dictionary to store the first occurrence of each unique slot combination
-#     to_delete = set()
-
-#     for intent in intents_extracted:
-#         virgin_intent = re.sub(r'\d+$', '', intent)  # Remove trailing numbers
-
-#         slot_values = state_manager.state_dict["NLU"][intent]["slots"][correspondences_intents[virgin_intent]]
-
-#         # Convert slot_values to a tuple so it can be used as a key (since dicts are unhashable)
-#         slot_tuple = tuple(sorted(slot_values.items()))  
-
-#         # If this slot combination is already seen, mark it for deletion
-#         if (virgin_intent, slot_tuple) in to_keep:
-#             to_delete.add(intent)
-#         else:
-#             to_keep[(virgin_intent, slot_tuple)] = intent  # Store the first occurrence
-
-#     # Keep only the necessary intents
-#     intents_extracted[:] = [intent for intent in intents_extracted if intent not in to_delete]
-
-#     # Remove duplicates from state_manager
-#     for intent in to_delete:
-#         del state_manager.state_dict["NLU"][intent]
-
-#     return intents_extracted
-
 def process_NLU_intent_and_slots(user_input):
     
     if PRINT_DEBUG:
@@ -132,6 +106,10 @@ def process_NLU_intent_and_slots(user_input):
         # print("Extracting slots...")
         out_NLU_slots = model_query.query_model(system_prompt=PROMPT_NLU_SLOTS, input_file=slots_input)
         
+        if PRINT_DEBUG:
+            print("Checking outpus slots: ", out_NLU_slots)
+            print("Intents extracted: ", intents_extracted)
+
         for intent in intents_extracted:
             pattern = rf'(?:- )?(?:"{intent}"|{intent}).*?(\{{.*?\}})'
 
@@ -139,7 +117,7 @@ def process_NLU_intent_and_slots(user_input):
 
             if match:                
                 slots_content = match.group(1)
-                # print("\nExtracted Slots Content: ", slots_content, " for intent ", intent)                
+                print("\nExtracted Slots Content: ", slots_content, " for intent ", intent)                
                 try:
                     slots = fix_json_string(slots_content)
                     # if intent in info_intents and "details" in slots and slots["details"]:
@@ -244,10 +222,14 @@ def process_COT_and_USD(slot_to_update, user_input, intents_extracted):
 
     COT_input = prev_entity + " / " + user_input
 
+    if PRINT_DEBUG:
+        print("COT_input: ", COT_input)
     out_COT = model_query.query_model(system_prompt=PROMPT_COT_DETECTION, input_file=str(COT_input))
     
     if PRINT_DEBUG:
         print("\n\nAnalyzing user_input through COT component: ", COT_input)
+
+        
     
         # if "same_query" in out_COD or "change_of_query" in out_COD:
         #     break 
@@ -309,7 +291,6 @@ def final_check_NLU(intents_extracted):
 def run_pipeline(user_input):
     
     global state_manager, model_query
-    
     
     exit = False
     new_intent = False
@@ -380,57 +361,14 @@ def run_pipeline(user_input):
                 # the main idea is to add an intent "end_conversation" that determine when a user wants to quit his experience with llama platform
                 # till now, the conversation will be stuck in this main loop. 
                 exit = True
-        
-def pretty_print():
-    colors = [
-        "\033[91m",  # Red
-        "\033[93m",  # Yellow
-        "\033[92m",  # Green
-        "\033[96m",  # Cyan
-        "\033[94m",  # Blue
-        "\033[95m",  # Magenta
-    ]
-
-    ascii_art = [
-        " ___      ___      _______  __   __  __   __  _______  ___   _______  _______ ",
-        "|   |    |   |    |   _   ||  |_|  ||  | |  ||       ||   | |       ||   _   |",
-        "|   |    |   |    |  |_|  ||       ||  | |  ||  _____||   | |       ||  |_|  |",
-        "|   |    |   |    |       ||       ||  |_|  || |_____ |   | |       ||       |",
-        "|   |___ |   |___ |       ||       ||       ||_____  ||   | |      _||       |",
-        "|       ||       ||   _   || ||_|| ||       | _____| ||   | |     |_ |   _   |",
-        "|_______||_______||__| |__||_|   |_||_______||_______||___| |_______||__| |__|",
-    ]
-
-    term_width = get_terminal_width()
-
-    for i, line in enumerate(ascii_art):
-        color = colors[i % len(colors)]  # Cycle through colors
-        padding = (term_width - len(line)) // 2  # Calculate centering
-        print(" " * max(0, padding) + color + line + "\033[0m")  # Centered and colored
-        time.sleep(0.05)  # Optional: Adds a small delay for effect
-
-
 
 if __name__ == "__main__":
-    
-    welcome_message = """\n\n
- __          __  _                               _        
- \ \        / / | |                             | |       
-  \ \  /\  / /__| | ___ ___  _ __ ___   ___     | |_ ___  
-   \ \/  \/ / _ \ |/ __/ _ \| '_ ` _ \ / _ \    | __/ _ \ 
-    \  /\  /  __/ | (_| (_) | | | | | |  __/    | || (_) |
-     \/  \/ \___|_|\___\___/|_| |_| |_|\___|     \__\___/ 
-    \n\n
-    """
-
-    # Print centered and cleaned message
-    print(center_text(welcome_message))
 
     pretty_print()
     
-    authenticate()
+    authenticate(force_auth=False)
     
-    print_system(f"Hi {get_username()}, how can I help you?")
+    print_system(f"Hi {get_username()}, how can I help you?", auth=True)
     user_input = input_user("You: ")
     # "Show me my top artists of the last month."      # by The Weeknd 
     run_pipeline(user_input)

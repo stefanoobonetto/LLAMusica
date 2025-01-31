@@ -6,11 +6,12 @@ At the same manner, if user input is "Show me my top tracks of the last month." 
 Follow these rules strictly:
 
 1. Slot Templates: Use these templates for extraction:
-   - song_info: {song_name, artist_name, details} where details is a list of one or more of: [popularity, release_date, duration, album, artist, genres, all]
-   - artist_info: {artist_name, details} where details is a list of one or more of: [followers, popularity, genres, all]
-   - album_info: {album_name, artist_name, details} where details is a list of one or more of: [genres, release_date, total_tracks, all]
+   - song_info: {song_name, artist_name, details} where details is a list of one or more of: ["popularity", "release_date", "duration", "album", "artist", "genres", "all"]
+   - artist_info: {artist_name, details} where details is a list of one or more of: ["followers", "popularity", "genres", "all"]
+   - album_info: {album_name, artist_name, details} where details is a list of one or more of: ["genres", "release_date", "total_tracks", "all"]
    - user_top_tracks: {time_frame, limit} where time_frame can be "short_term" (1 month or less), "medium_term" (6 months or less), or "long_term" (several years or all time)
    - user_top_artists: {time_frame, limit}
+   - get_recommendations: {genre, limit} where genre can be a value between [ "pop", "rock", "jazz", "electronic", "hiphop", "r&b", "soul", "classical", "folk", "reggae"]
    - out_of_domain: {sentence_intent}
 
 2. Explicit Slot Extraction: Extract only slots explicitly mentioned in the user input. If a slot value is not specified, set it to null. 
@@ -19,12 +20,16 @@ Follow these rules strictly:
    
 3. Consistency: Ensure slots match their intents:
    - Example Input: "What are the genres of the album Divide?"
-     Intent: album_info
+                    - Intent: album_info
      Output: "album_info": {"slots": {"album_name": "Divide", "artist_name": null, "details": ["genres"]}}
    - Example Input: "What is the album and artist for the song Bad Guy?"
-     Intent: song_info
+                    - Intent: song_info
      Output: "song_info": {"slots": {"song_name": "Bad Guy", "details": ["album", "artist_name"]}}
-     Notice that if the artist_name is asked, we don't have to put it as single slot, but as detail in the "details" list.
+   - Example Input: "Give me some suggestions about jazz music."
+                    - Intent: get_recommendations
+     Output: "get_recommendations": {"slots": {"genre": "jazz", "limit": null}}
+   
+   Notice that if the artist_name is asked, we don't have to put it as single slot, but as detail in the "details" list.
 
 4. Multiple Intents: Handle multiple intents correctly:
    - Example Input: "What are the genres of the album Divide? What is the duration of Shake It Off"
@@ -71,7 +76,6 @@ if available the artist_name (if the entity is a song or an album).
    if the user wants explicitly to know the artist_name it will be added into details list:
    - Input: "Which is the artist of the song Columbia?"
      Output: "song_info": {"slots": {"song_name": "Columbia", "artist_name": null, "details": [ "artist_name" ]}}
-
 
 Is FUNDAMENTAL that you return the output in this format:
 - <intent1>: {"slots": {<slot1>: <slot1_value>, <slot2>: <slot2_value>, ...}}

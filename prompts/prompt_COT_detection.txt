@@ -26,6 +26,10 @@ Examples:
         user_top_tracks / 5 results please (request_info)
     Output 3:
         same_query
+    Input 4:
+        get_recommendations / 5 results please (request_info)
+    Output 3:
+        same_query
 
 Pay attention if previous_entity is user_top_artists or user_top_tracks and between brackets there is (confirmation), you MUST output
     change_of_query

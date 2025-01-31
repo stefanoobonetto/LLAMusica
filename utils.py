@@ -1,10 +1,11 @@
 import re
 import os
 import sys
+import time
 import json
 import textwrap
 
-intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "out_of_domain"]
+intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "get_recommendations", "out_of_domain"]
 PROMPT_NLU = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU.txt")
 PROMPT_NLU_INTENTS = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_intents.txt")
 PROMPT_NLU_SLOTS = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_slots.txt")
@@ -13,7 +14,7 @@ PROMPT_NLG = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLG.txt")
 PROMPT_USD = os.path.join(os.path.dirname(__file__), "prompts/prompt_USD.txt")
 PROMPT_COT_DETECTION = os.path.join(os.path.dirname(__file__), "prompts/prompt_COT_detection.txt")
 
-PRINT_DEBUG = False
+PRINT_DEBUG = True
 
 info_intents = ["artist_info", "song_info", "album_info"]
 
@@ -42,13 +43,19 @@ def get_current_intent(state_dict=None, next_best_action=None):
     if state_dict:
         next_best_action = state_dict["DM"]["next_best_action"]
     _, intent = split_intent(next_best_action)
+    
+    if PRINT_DEBUG:
+        print("\n\n\nReturning intent: ", intent, "\n\n")
     return intent
 
 def get_current_action(state_dict=None, next_best_action=None):
     if state_dict:
         next_best_action = state_dict["DM"]["next_best_action"]
     action, _ = split_intent(next_best_action)
-    return action
+    
+    if PRINT_DEBUG:
+        print("\n\n\nReturning action: ", action, "\n\n")
+        return action
 
 def extract_intents_build_slots_input(user_input, state_dict, out_NLU_intents):
     
@@ -100,6 +107,10 @@ def check_slots(NLU_component, slots):
     return True
 
 def check_args(DM_component_part):
+    
+    if PRINT_DEBUG:
+        print("\n\n\nDENTRO CHECK ARGS\n\n\n")
+    
     next_best_action = DM_component_part.get("next_best_action", "")
     match = re.search(r'\((.*?)\)', next_best_action)
     
@@ -122,7 +133,29 @@ def check_args(DM_component_part):
             return False
         if "artist_name" in DM_component_part["args"] and DM_component_part["args"]["artist_name"] in [None, "null"] and "artist_name" not in DM_component_part["args"]["details"]:
             return False
+    elif intent == "get_recommendations":
+        extracted_action = get_current_action(next_best_action=next_best_action)
+        if PRINT_DEBUG: 
+            print("Extracted action:", extracted_action)  # Debugging
+
+        if extracted_action == "request_info":
+            if PRINT_DEBUG:
+                print("Args content:", DM_component_part["args"])  # Debugging
+                print("Details content:", DM_component_part["args"].get("details"))  # Debugging
+            if "details" not in DM_component_part["args"] or DM_component_part["args"]["details"] == []:
+                if PRINT_DEBUG:
+                    print("❌ Missing 'details' in args")
+                return False
+        else:
+            if PRINT_DEBUG:
+                print("Genre value:", DM_component_part["args"].get("genre"))  # Debugging
+            if "genre" not in DM_component_part["args"] or DM_component_part["args"]["genre"] in [None, "null"]:
+                if PRINT_DEBUG:
+                    print("❌ Missing or null 'genre'")
+                return False
     return True
+
+
 
 def fix_json_string(json_string):
     """
@@ -184,13 +217,12 @@ def validate_DM(response, check_type):
     next_best_action = parsed_response["next_best_action"]
     # print("Next best action: ", next_best_action)
     
-    action = get_current_action(next_best_action=next_best_action) 
     intent = get_current_intent(next_best_action=next_best_action)
     
     # Safely check if "details" exists and is not empty
     if not parsed_response["args"].get("details"): 
         # print("Key 'details' is missing or empty in 'args'.")
-        if intent in ["user_top_tracks", "user_top_artists", "out_of_domain"]:
+        if intent in ["user_top_tracks", "user_top_artists", "get_recommendations", "out_of_domain"]:
             pass 
         else:           
             return False
@@ -199,7 +231,7 @@ def validate_DM(response, check_type):
         return "request_info" in response and check_args(parsed_response)
     elif check_type == "confirmation":
         return "confirmation" in response and check_args(parsed_response)
-    
+
     return False
 
 def check_null_slots_and_update_state_dict(state_dict, out_USD, intents_extracted, slot_to_update):
@@ -296,8 +328,11 @@ def clear_last_line():
     sys.stdout.write("\033[K")  # Clears the current line
     sys.stdout.flush()
 
-def print_system(message):
+def print_system(message, auth=False):
     """Prints a system message anchored to the left with a speech bubble, taking half of the terminal width."""
+    if auth:
+        print(center_text("\nAuthentication successful!\n"))
+        
     term_width = get_terminal_width()
     width = term_width // 2 - 4  # Use half the terminal width
     wrapped_message = "\n".join(textwrap.fill(line, width) for line in message.split("\n"))  # Preserve \n
@@ -327,3 +362,45 @@ def input_user(prompt):
     print(f"{padding}└{'─' * (width + 1)}\|")  # Speech bubble tail
 
     return user_message  # Return user input if needed
+
+def pretty_print():
+    
+    welcome_message = """\n\n
+ __          __  _                               _        
+ \ \        / / | |                             | |       
+  \ \  /\  / /__| | ___ ___  _ __ ___   ___     | |_ ___  
+   \ \/  \/ / _ \ |/ __/ _ \| '_ ` _ \ / _ \    | __/ _ \ 
+    \  /\  /  __/ | (_| (_) | | | | | |  __/    | || (_) |
+     \/  \/ \___|_|\___\___/|_| |_| |_|\___|     \__\___/ 
+    \n\n
+    """
+
+    # Print centered and cleaned message
+    print(center_text(welcome_message))
+    
+    colors = [
+        "\033[91m",  # Red
+        "\033[93m",  # Yellow
+        "\033[92m",  # Green
+        "\033[96m",  # Cyan
+        "\033[94m",  # Blue
+        "\033[95m",  # Magenta
+    ]
+
+    ascii_art = [
+        " ___      ___      _______  __   __  __   __  _______  ___   _______  _______ ",
+        "|   |    |   |    |   _   ||  |_|  ||  | |  ||       ||   | |       ||   _   |",
+        "|   |    |   |    |  |_|  ||       ||  | |  ||  _____||   | |       ||  |_|  |",
+        "|   |    |   |    |       ||       ||  |_|  || |_____ |   | |       ||       |",
+        "|   |___ |   |___ |       ||       ||       ||_____  ||   | |      _||       |",
+        "|       ||       ||   _   || ||_|| ||       | _____| ||   | |     |_ |   _   |",
+        "|_______||_______||__| |__||_|   |_||_______||_______||___| |_______||__| |__|",
+    ]
+
+    term_width = get_terminal_width()
+
+    for i, line in enumerate(ascii_art):
+        color = colors[i % len(colors)]  # Cycle through colors
+        padding = (term_width - len(line)) // 2  # Calculate centering
+        print(" " * max(0, padding) + color + line + "\033[0m")  # Centered and colored
+        time.sleep(0.05)  # Optional: Adds a small delay for effect

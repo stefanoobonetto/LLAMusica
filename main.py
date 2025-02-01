@@ -10,62 +10,62 @@ USER_INPUT = "user_input.txt"
 intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "out_of_domain"]
 
 def build_GK():
-    DM_component_part = json.dumps(state_manager.state_dict.get("DM", {}))
+    DM_component_list = json.dumps(state_manager.state_dict.get("DM", {}))
     
     # this substitution step is crucial since the spotify API requires the key "artists" instead of "artist_name"    
-    DM_component_part = DM_component_part.replace("artist_name", "artists") 
+    DM_component_list = DM_component_list.replace("artist_name", "artists") 
     
-    DM_component_part = fix_json_string(DM_component_part)
+    list_GK = {}
+    
+    
+    
+    for element_new_best_option in json.loads(DM_component_list):
+        # element_new_best_option = fix_json_string(element_new_best_option)
+        # element_new_best_option = json.loads(element_new_best_option)
+        next_best_action = element_new_best_option["next_best_action"]
+        # if PRINT_DEBUG:
+        #       print(f"\nNext best action: {next_best_action}")  
 
-    next_best_action = DM_component_part["next_best_action"]
-    # if PRINT_DEBUG:
-    #       print(f"\nNext best action: {next_best_action}")  
+        action, intent = split_intent(next_best_action)
+        # if PRINT_DEBUG:
+        #       print(f"\n- action: {action} \n- intent: {intent}")
 
-    action, intent = split_intent(next_best_action)
-    # if PRINT_DEBUG:
-    #       print(f"\n- action: {action} \n- intent: {intent}")
-
-    if action == "confirmation":
-        if PRINT_DEBUG:
-            print(f"\n{intent} requested. Fetching...")
-
-        info = corresponding_actions.get(intent)(DM_component_part["args"])
-
-        if info:
-            # print(f"\Info fetched for {intent}:")
+        if action == "confirmation":
             if PRINT_DEBUG:
-                print("Info extracted for intent ", intent, ": ", info)
+                print(f"\n{intent} requested. Fetching...")
 
-            if intent in info_intents and intent != "artist_info":
-                info = {k.replace("artists", "artist_name"): v for k, v in info.items()}
-        
-            if intent != "user_top_tracks" and intent != "user_top_artists":
-                state_manager.update_section("GK", {intent: str(info)})
-            else:
-                state_manager.update_section("GK", {intent: [str(entity) for entity in info]})   # entity may be either an artist or a track
-            return state_manager.state_dict
-        else:
-            if PRINT_DEBUG:
-                print("\nFailed to fetch info or no data returned.")
-    elif action == "request_info":
-        if intent in info_intents:
+            info = corresponding_actions.get(intent)(element_new_best_option[f"args({intent})"])
 
-            info = corresponding_actions.get(intent)(DM_component_part["args"])
-            
             if info:
+                # print(f"\Info fetched for {intent}:")
                 if PRINT_DEBUG:
-                    print(f"\nInfo fetched for {intent}:")
-                    print(info)
+                    print("Info extracted for intent ", intent, ": ", info)
 
-                state_manager.update_section("GK", {intent: info})
-                return state_manager.state_dict                    
+                if intent in info_intents and intent != "artist_info":
+                    info = {k.replace("artists", "artist_name"): v for k, v in info.items()}
+            
+                if intent != "user_top_tracks" and intent != "user_top_artists":
+                    list_GK[intent] = str(info)
+                else:
+                    list_GK[intent] = [str(entity) for entity in info]              # entity may be either an artist or a track
+            else:
+                if PRINT_DEBUG:
+                    print("\nFailed to fetch info or no data returned.")
+        elif action == "request_info":
+            if intent in info_intents:
+
+                info = corresponding_actions.get(intent)(element_new_best_option[f"args({intent})"])
                 
+                if info:
+                    if PRINT_DEBUG:
+                        print("Info extracted for intent ", intent, ": ", info)
+                    list_GK[intent] = info                
         else:
-            return state_manager.state_dict
-    else:
-        if PRINT_DEBUG:
-            print(f"\nUnsupported action: {action}.")
-        return state_manager.state_dict
+            if PRINT_DEBUG:
+                print(f"\nUnsupported action: {action}.")
+    
+    state_manager.update_section("GK", list_GK)
+    return state_manager.state_dict
 
 def process_NLU_intent_and_slots(user_input):
     
@@ -102,7 +102,8 @@ def process_NLU_intent_and_slots(user_input):
 
             if match:                
                 slots_content = match.group(1)
-                print("\nExtracted Slots Content: ", slots_content, " for intent ", intent)                
+                if PRINT_DEBUG:
+                    print("\nExtracted Slots Content: ", slots_content, " for intent ", intent)                
                 try:
                     slots = fix_json_string(slots_content)
                     # if intent in info_intents and "details" in slots and slots["details"]:
@@ -126,47 +127,102 @@ def process_NLU_intent_and_slots(user_input):
     
     return state_manager.state_dict, intents_extracted
 
+# def extract_DM_output(text):
+#     """Extracts and fixes JSON content from a string, keeping it simple."""
+#     try:
+#         # Extract anything that looks like a JSON list
+#         json_match = re.search(r'\[\s*\{.*\}\s*\]', text, re.DOTALL)
+#         if json_match:
+#             json_text = json_match.group(0).strip()  # Extract the JSON-like content
+            
+#             # Convert Python-style booleans and None to JSON format
+#             json_text = json_text.replace("None", "null").replace("True", "true").replace("False", "false")
+
+#             # Load as JSON
+#             return json.loads(json_text)
+#         else:
+#             print("No valid JSON found.")
+#             return None
+#     except json.JSONDecodeError as e:
+#         print(f"JSON decoding failed: {e}")
+#         return None
+
 def query_DM_model_with_validation(system_prompt, intents_extracted):
 
+    action_intents = {}
+    
     # here we check which is the expected type of the next_best_action, we'll use it then to validate the output of the DM
     for intent in intents_extracted:
         if "details" in state_manager.state_dict["NLU"][intent]["slots"]:
             check_type = "request_info" if any("artist_name" in state_manager.state_dict["NLU"][intent]["slots"]["details"] for intent in intents_extracted) or state_manager.check_none_values() else "confirmation"
         else: 
             check_type = "request_info" if state_manager.check_none_values() else "confirmation"
+        action_intents[intent] = check_type
     
-    while True:
-        out_DM = model_query.query_model(system_prompt=system_prompt, input_file=str(state_manager.state_dict))
+    list_of_new_best_actions = []
+    
+    if PRINT_DEBUG:
+        print("\n\n\n--------> Intents extracted: ", intents_extracted, "\n\n\n")
+    
+    for intent in intents_extracted:
         
-        if validate_DM(out_DM, check_type):
-            break
+        input_file = {intent: state_manager.state_dict["NLU"][intent]}
+        # if PRINT_DEBUG:
+            # print("\n\n\nGiving as input to DM (intent: ", intent, "): ", input_file)
+        
         if PRINT_DEBUG:
-            print(f"------------> Invalid next_best_action detected \n {out_DM} \n\n... retrying...")
+            print(f"\n\n\nQuerying DM model with validation...(intent: {intent})\n")
+        
+        while True:
+            out_DM = model_query.query_model(system_prompt=system_prompt, input_file=str(input_file))
+            
+            match = re.search(r'\{(?:[^{}]*|\{(?:[^{}]*|\{[^{}]*\})*\})*\}', out_DM, re.DOTALL)
+            if match:
+                new_out_DM = match.group()
+            # if "next_best_action" not in list_out_DM:
+            #     list_out_DM = re.findall(r'\[[^\[\]]*\]', out_DM)
+            #     print("-"*95)
+            #     print("----------> Ora estratto contenuto tra \{\}:\n\n", list_out_DM)                
+            
+            if new_out_DM:
+                if PRINT_DEBUG:
+                    print("\n\n\nExtracted DM output: \n\n", new_out_DM, "\n from virgin output. \n", out_DM, "\n")
+            else:
+                if PRINT_DEBUG:
+                    print(f"Failed to extract JSON from DM output: {out_DM}")
+                continue
+            
+            
+            if validate_DM(new_out_DM, intent, action_intents[intent]):
+                list_of_new_best_actions.append(new_out_DM)
+                
+                if PRINT_DEBUG:
+                    print(f"Validated DM output...exiting...")
+                break
+            if PRINT_DEBUG:
+                print(f"------------> Invalid next_best_action detected \n {new_out_DM} \n\n... retrying...")
 
-    return out_DM
+    return list_of_new_best_actions
 
 def process_DM(intents_extracted):
     
-    dm_data = {}
+    new_fixed_list = []    
     
-    while dm_data == {}:
+    while new_fixed_list == []:
         
-        out_DM = query_DM_model_with_validation(PROMPT_DM, intents_extracted)
+        out_DM_list = query_DM_model_with_validation(PROMPT_DM, intents_extracted)
+        
+        
         
         try:
-            json_match = re.search(r'\{.*\}', out_DM, re.DOTALL)    # Match anything that starts and ends with braces
-
-            if json_match:
-                json_content = json_match.group()
-                dm_data = fix_json_string(json_content)
-            else:
-                if PRINT_DEBUG:
-                    print("No valid JSON content found in DM output....")
+            for elem in out_DM_list:
+                new_fixed_list.append(fix_json_string(elem))
+                
         except json.JSONDecodeError as e:
             if PRINT_DEBUG:
                 print(f"Failed to parse DM output as JSON: {e}")
         
-    state_manager.update_section("DM", dm_data)
+    state_manager.update_section("DM", new_fixed_list)
     return state_manager.state_dict
 
 def process_NLG():
@@ -185,20 +241,20 @@ def process_COT_and_USD(slot_to_update, user_input, intents_extracted):
     # COT component will use the previous entity extracted from the NLU component and the current user input to compute the alignement
     # between the two and determine if there's a change of topic
     
-    prev_entity = ""    
+    prev_entity = []    
     
     for intent in intents_extracted:
         if intent in info_intents:
-            prev_entity += " - ".join(
+            prev_entity.append(intent + " - ".join(
                 state_manager.state_dict["NLU"][intent]["slots"][elem]
                 for intent in intents_extracted
                 for elem in info_entity[intent]
                 if state_manager.state_dict["NLU"][intent]["slots"][elem] not in [None, "null"] 
-            ) 
+            ) )
         else:
             prev_entity += intent
 
-    COT_input = prev_entity + " / " + user_input
+    COT_input = str(prev_entity) + " / " + user_input
 
     if PRINT_DEBUG:
         print("COT_input: ", COT_input)
@@ -292,12 +348,24 @@ def run_pipeline(user_input):
             # se next_best_action è "confirmation" allora si forniscono le informazioni presenti nella GK per poi chiedere all'utente se desidera altro 
             # se desidera altro si apre una seconda istanza di NLU per rappresentare questa nuova query
             
-            slot_to_update = get_slot_to_update(state_manager.state_dict)
+            slot_to_update = get_slot_to_update(state_manager.state_dict, intents_extracted)            # dict {intent1: [slot1, slot2, ...], intent2: [slot1, slot2, ...]}
+            
+            if PRINT_DEBUG:
+                print("\n\n\n----> SLOTS to UPDATE: ", slot_to_update)
             
             print_system(out_NLG)
             user_input = input_user("You: ")
-            # these slots to update are extracted from the state_dict only if the next_best_action is "request_info"        
-            result = process_COT_and_USD(slot_to_update, user_input + f" ({get_current_action(state_manager.state_dict)})", intents_extracted)
+            # these slots to update are extracted from the state_dict only if the next_best_action is "request_info"     
+            
+            string_actions = "( "
+            for intent in intents_extracted:
+                string_actions += f"{get_next_best_action(intent, state_manager.state_dict)}, "
+            string_actions = string_actions[:-2] + " )" 
+            
+            if PRINT_DEBUG:
+                print("\n\n\n----> Current actions: ", string_actions, "\n\n")
+               
+            result = process_COT_and_USD(slot_to_update, user_input + f" ({get_current_action(intent, state_manager.state_dict)})", intents_extracted)
                 
             if not result:                  # change_of_domain detected
                 new_intent = True                
@@ -321,10 +389,12 @@ if __name__ == "__main__":
 
     pretty_print()
     
-    authenticate(force_auth=False)
+    authenticate(force_auth=True)
     
     print_system(f"Hi {get_username()}, how can I help you?", auth=True)
     user_input = input_user("You: ")
+    # user_input = "When has been released Imagine by John Lennon?"
+    # user_input = "When has been released the song Blinding Lights by The Weeknd? How many followers does Ed Sheeran have?"
     # "Show me my top artists of the last month."      # by The Weeknd 
     run_pipeline(user_input)
     

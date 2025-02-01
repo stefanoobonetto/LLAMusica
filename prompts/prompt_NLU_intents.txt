@@ -8,7 +8,6 @@ from the following list:
     - get_recommendations
     - out_of_domain
 Is FUNDAMENTAL that you identify only the intents from the provided list, if you extract others, mention only the ones listed above. 
-
 1. No Slots or Additional Data: Focus ONLY on identifying the intents. Do not extract slots or additional details.
         
 2. Multiple Intents: If the input contains multiple intents, list them all as separate entries (only if they are part of the above list).
@@ -17,7 +16,8 @@ Is FUNDAMENTAL that you identify only the intents from the provided list, if you
         Output:
             - Intent1: "song_info"
             - Intent2: "song_info"
-
+    Don't add any additional information, just this list.
+    
 3. Ambiguity Handling: Use the context to distinguish between intents. For example:
         Input: "Tell me how many tracks does the album Divide have and which is the duration of Shape of You ."
         Output: 

@@ -14,7 +14,7 @@ PROMPT_NLG = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLG.txt")
 PROMPT_USD = os.path.join(os.path.dirname(__file__), "prompts/prompt_USD.txt")
 PROMPT_COT_DETECTION = os.path.join(os.path.dirname(__file__), "prompts/prompt_COT_detection.txt")
 
-PRINT_DEBUG = True
+PRINT_DEBUG = False
 
 intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "get_recommendations", "out_of_domain"]
 info_intents = ["artist_info", "song_info", "album_info"]
@@ -51,14 +51,25 @@ def get_current_intent(state_dict=None, next_best_action=None):
         print("\n\n\nReturning intent: ", intent, "\n\n")
     return intent
 
-def get_current_action(state_dict=None, next_best_action=None):
+def get_current_action(intent, state_dict=None, next_best_action=None):
     if state_dict:
-        next_best_action = state_dict["DM"]["next_best_action"]
-    action, _ = split_intent(next_best_action)
-    
-    if PRINT_DEBUG:
-        print("\n\n\nReturning action: ", action, "\n\n")
-        return action
+        next_best_action_list = state_dict["DM"]
+        for elem in next_best_action_list:
+            act_intent, action = split_intent(elem["next_best_action"]) 
+            if act_intent == intent:
+                if PRINT_DEBUG:
+                    print("\n\n\nReturning action: ", action, "\n\n")
+                return action
+            
+def get_next_best_action(intent, state_dict=None):
+    if state_dict:
+        next_best_action_list = state_dict["DM"]
+    for elem in next_best_action_list:
+        act_intent, action = split_intent(elem["next_best_action"]) 
+        if act_intent == intent:
+            if PRINT_DEBUG:
+                print("\n\n\nReturning next_best_action: ", elem["next_best_action"], "\n\n")
+            return elem["next_best_action"]
 
 def final_check_NLU(state_dict, intents_extracted):
     to_delete = []
@@ -94,7 +105,7 @@ def extract_intents_build_slots_input(user_input, state_dict, out_NLU_intents):
     return slots_input, intents_extracted, state_dict
 
 def check_slots(NLU_component, slots):
-    errors = []
+
     required_slots = {
         "artist_info": ["artist_name"],
         "song_info": ["song_name"],
@@ -102,84 +113,92 @@ def check_slots(NLU_component, slots):
     }
 
     if not slots or "slots" not in slots:  # Check if 'slots' key exists
-        # print("Slots data is missing or invalid.")
         return False
-
+    
     actual_slots = slots["slots"]  # Extract the actual slots data
-    # print("NLU COMPONENT: ", NLU_component)
-    # print("SLOTS: ", actual_slots)
+    
+    if PRINT_DEBUG:
+        print("NLU COMPONENT: ", NLU_component)
+        print("SLOTS: ", actual_slots)
 
     for intent in NLU_component.keys():
         required = required_slots.get(intent, [])
+        
+        # Check required slots
         for slot in required:
-            if slot not in actual_slots or not actual_slots[slot]:
-                errors.append(f"Missing or invalid slot '{slot}' for intent '{intent}'")
+            if slot not in actual_slots or not actual_slots[slot]:  # Check if required slot exists and is not empty
+                if PRINT_DEBUG:
+                    print(f"Missing or invalid slot '{slot}' for intent '{intent}'")
+                return False
 
-    if errors:
-        if PRINT_DEBUG:
-            print("\n".join(errors))
-        return False
-    return True
+        # "details" slot check --- not empty and not == None 
+        if intent in info_intents:
+            if "details" not in actual_slots:  # Check if details exists
+                if PRINT_DEBUG:
+                    print(f"Missing slot 'details' for intent '{intent}'")
+                return False
+            if not actual_slots["details"]:  # Check if details list is empty (fixing the precedence issue)
+                if PRINT_DEBUG:
+                    print(f"Empty slot 'details' for intent '{intent}'")
+                return False
+                
+    return True  # If no issues, return True
 
-def check_args(DM_component_part):
+def check_args(parsed_response, intent, action):
     
-    if PRINT_DEBUG:
-        print("\n\n\nDENTRO CHECK ARGS\n\n\n")
+    # if PRINT_DEBUG:
+        # print("\n\n\nDENTRO CHECK ARGS\n\n\n")
     
-    next_best_action = DM_component_part.get("next_best_action", "")
-    match = re.search(r'\((.*?)\)', next_best_action)
-    
-    if match:
-        intent = match.group(1)
-    else:
-        return False
-    # print("----------> Intent extracted: ", intent)
-
     if intent == "artist_info":
-        if "artist_name" not in DM_component_part["args"] or DM_component_part["args"]["artist_name"] == None or DM_component_part["args"]["artist_name"] == "null":
+        if "artist_name" not in parsed_response["args(artist_info)"] or parsed_response["args(artist_info)"]["artist_name"] == None or parsed_response["args(artist_info)"]["artist_name"] == "null":
             return False
     elif intent == "song_info":
-        if "song_name" not in DM_component_part["args"] or DM_component_part["args"]["song_name"] in [None, "null"]:
+        if "song_name" not in parsed_response["args(song_info)"] or parsed_response["args(song_info)"]["song_name"] in [None, "null"]:
             return False
-        if "artist_name" in DM_component_part["args"] and DM_component_part["args"]["artist_name"] in [None, "null"] and "artist_name" not in DM_component_part["args"]["details"]:
+        if "artist_name" in parsed_response["args(song_info)"] and parsed_response["args(song_info)"]["artist_name"] in [None, "null"] and "artist_name" not in parsed_response["args(song_info)"]["details"]:
             return False
     elif intent == "album_info":
-        if "album_name" not in DM_component_part["args"] or DM_component_part["args"]["album_name"] in [None, "null"]:
+        if "album_name" not in parsed_response["args(album_info)"] or parsed_response["args(album_info)"]["album_name"] in [None, "null"]:
             return False
-        if "artist_name" in DM_component_part["args"] and DM_component_part["args"]["artist_name"] in [None, "null"] and "artist_name" not in DM_component_part["args"]["details"]:
+        if "artist_name" in parsed_response["args(album_info)"] and parsed_response["args(album_info)"]["artist_name"] in [None, "null"] and "artist_name" not in parsed_response["args(album_info)"]["details"]:
             return False
     elif intent == "get_recommendations":
-        extracted_action = get_current_action(next_best_action=next_best_action)
-        if PRINT_DEBUG: 
-            print("Extracted action:", extracted_action)  # Debugging
+        extracted_action = get_current_action(parsed_response)
+        
+        # if PRINT_DEBUG: 
+            # print("Extracted action:", extracted_action)  
 
         if extracted_action == "request_info":
             if PRINT_DEBUG:
-                print("Args content:", DM_component_part["args"])  # Debugging
-                print("Details content:", DM_component_part["args"].get("details"))  # Debugging
-            if "details" not in DM_component_part["args"] or DM_component_part["args"]["details"] == []:
+                print("Args content:", parsed_response["args(get_recommendations)"])  
+                print("Details content:", parsed_response["args(get_recommendations)"].get("details"))  
+            if "details" not in parsed_response["args(get_recommendations)"] or parsed_response["args(get_recommendations)"]["details"] == []:
                 if PRINT_DEBUG:
-                    print("❌ Missing 'details' in args")
+                    print("Missing 'details' in args")
                 return False
         else:
             if PRINT_DEBUG:
-                print("Genre value:", DM_component_part["args"].get("genre"))  # Debugging
-            if "genre" not in DM_component_part["args"] or DM_component_part["args"]["genre"] in [None, "null"]:
+                print("Genre value:", parsed_response["args(get_recommendations)"].get("genre"))  
+            if "genre" not in parsed_response["args(get_recommendations)"] or parsed_response["args(get_recommendations)"]["genre"] in [None, "null"]:
                 if PRINT_DEBUG:
-                    print("❌ Missing or null 'genre'")
+                    print("Missing or null 'genre'")
                 return False
     return True
-
 
 
 def fix_json_string(json_string):
     """
     Fixes and parses a malformed JSON string, ensuring it is a single dictionary object.
     """
+    if not isinstance(json_string, str):
+        if PRINT_DEBUG:
+            print(f"❌ Error: Expected string but got {type(json_string)} instead.")
+        return False  # Return False instead of processing non-string input
+
     try:
         # Step 1: Remove extraneous text outside JSON-like content
-        json_string = re.sub(r"^[^{]*", "", json_string)  # Remove anything before the first '{'
-        json_string = re.sub(r"[^}]*$", "", json_string)  # Remove anything after the last '}'
+        json_string = re.sub(r"^[^{\[]*", "", json_string)  # Remove anything before '{' or '['
+        json_string = re.sub(r"[^}\]]*$", "", json_string)  # Remove anything after '}' or ']'
 
         # Step 2: Replace single quotes with double quotes (only outside brackets or braces)
         json_string = re.sub(r"(?<!\\)'", '"', json_string)  # Replace ' with "
@@ -187,14 +206,14 @@ def fix_json_string(json_string):
         # Step 3: Replace Python-specific keywords with JSON equivalents
         json_string = json_string.replace("None", "null").replace("True", "true").replace("False", "false")
 
-        # Step 4: Ensure keys are quoted
-        json_string = re.sub(r'(?<!")(\b\w+\b)(?=\s*:)', r'"\1"', json_string)  # Add quotes to keys
+        # Step 4: Ensure keys are properly quoted
+        json_string = re.sub(r'(?<!")(\b\w+\b)(?=\s*:)', r'"\1"', json_string)  
 
         # Step 5: Merge multiple top-level dictionaries into one
-        json_string = re.sub(r"}\s*,\s*{", ", ", json_string)  # Merge separate dicts
+        json_string = re.sub(r"}\s*,\s*{", ", ", json_string)  
 
         # Step 6: Remove trailing commas
-        json_string = re.sub(r',\s*([}\]])', r'\1', json_string)  # Remove commas before } or ]
+        json_string = re.sub(r',\s*([}\]])', r'\1', json_string)  
 
         # Step 7: Ensure balanced braces
         open_braces = json_string.count('{')
@@ -204,12 +223,64 @@ def fix_json_string(json_string):
 
         # Step 8: Parse the corrected JSON
         return json.loads(json_string)
+    
     except json.JSONDecodeError as e:
         if PRINT_DEBUG:
-            print(f"Failed to fix JSON: {e}")
+            print(f"❌ Failed to fix JSON: {e}")
         return False
+        
+# def get_next_best_action(parsed_response, action, intent):
+#     for elem in parsed_response:
+#         if f"next_best_action: {action}({intent})" in elem:
+#             return elem
+#     return None
     
-def validate_DM(response, check_type):
+# def validate_DM(response, intent, action):
+    # """Check if the response is valid based on type and arguments."""
+
+    # try:
+    #     # if isinstance(response, list):                      # nel caso di multi intents avremo come output una lista di dict (una lista di next_best_action e args)
+    #     #     parsed_response = []
+    #     #     for i in range(len(response)):
+    #     #         parsed_response_element = fix_json_string(response[i])
+    #     #         if not parsed_response:
+    #     #             if PRINT_DEBUG:
+    #     #                 print("Failed to parse JSON response.")
+    #     #             return False
+    #     #         parsed_response.append(parsed_response_element)
+    #     # else:
+    #     parsed_response = [fix_json_string(response)]  
+    #     if not parsed_response:
+    #         if PRINT_DEBUG:
+    #             print("Failed to parse JSON response.")
+    #         return False
+    # except json.JSONDecodeError:
+    #     if PRINT_DEBUG:
+    #         print("Failed to parse JSON response.")
+    #     return False
+    
+    # for elem in parsed_response:
+    #     found = False  
+    #     for intent, action in action_intents.items():
+    #         if f"next_best_action: {action}({intent})" in elem or f"args({intent})" in elem:
+    #             found = True
+    #             break  # Se troviamo un match, passiamo al prossimo elem
+    #     if not found:  # Se nessun match è stato trovato per questo elem
+    #         return False
+    
+    # for intent, action in action_intents.items():
+    #     next_best_action = get_next_best_action(parsed_response, action, intent)
+        
+    #     if next_best_action:    
+    #         if not next_best_action["args"].get("details") and intent not in ["user_top_tracks", "user_top_artists", "get_recommendations", "out_of_domain"]:
+    #                 return False
+        
+    #         if not action in next_best_action and check_args(parsed_response):
+    #             return False
+
+    # return True
+
+def validate_DM(response, intent, action):
     """Check if the response is valid based on type and arguments."""
 
     try:
@@ -218,7 +289,7 @@ def validate_DM(response, check_type):
             if PRINT_DEBUG:
                 print("Failed to parse JSON response.")
             return False
-    except json.JSONDecodeError:
+    except json.JSONDecodffeError:
         if PRINT_DEBUG:
             print("Failed to parse JSON response.")
         return False
@@ -229,31 +300,21 @@ def validate_DM(response, check_type):
         return False
     
     # qua bisogna fare un check sull'intent estratto da DM per next_best_action e vedere se è user_top_tracks o user_top_artists va bene che non ci sia details    
-    next_best_action = parsed_response["next_best_action"]
-    # print("Next best action: ", next_best_action)
-    
-    intent = get_current_intent(next_best_action=next_best_action)
-    
+
+    args_key = f"args({intent})"  
+
+
     # Safely check if "details" exists and is not empty
-    if not parsed_response["args"].get("details"): 
-        # print("Key 'details' is missing or empty in 'args'.")
-        if intent in ["user_top_tracks", "user_top_artists", "get_recommendations", "out_of_domain"]:
-            pass 
-        else:           
+    if not parsed_response[args_key].get("details") and intent not in ["user_top_tracks", "user_top_artists", "get_recommendations", "out_of_domain"]:
             return False
     
-    if check_type == "request_info":
-        return "request_info" in response and check_args(parsed_response)
-    elif check_type == "confirmation":
-        return "confirmation" in response and check_args(parsed_response)
-
-    return False
+    return action in response and check_args(parsed_response, intent, action)
 
 def check_null_slots_and_update_state_dict(state_dict, out_USD, intents_extracted, slot_to_update):
 
-    if PRINT_DEBUG:
-        print("\n\nSlots to update: ", slot_to_update)
-        print("\n\nout_USD: ", out_USD)
+    # if PRINT_DEBUG:
+    #     print("\n\nSlots to update: ", slot_to_update)
+    #     print("\n\nout_USD: ", out_USD)
 
     for intent in intents_extracted:
             for slot in slot_to_update:
@@ -266,19 +327,28 @@ def check_null_slots_and_update_state_dict(state_dict, out_USD, intents_extracte
                 if match:
                     new_value = match.group(1).strip()  # Extract the captured value and remove spaces
                                 
-                if PRINT_DEBUG:
-                    print(f"Catch new value for {slot}: {new_value}")
+                # if PRINT_DEBUG:
+                #     print(f"Catch new value for {slot}: {new_value}")
                 state_dict["NLU"][intent]["slots"][slot] = new_value  
 
     return state_dict
 
-def get_slot_to_update(state_dict):
-    slot_to_update = []
-    
-    if "details" in state_dict["DM"]["args"]:   
-        for slot in state_dict["DM"]["args"]["details"]:
-            slot_to_update.append(slot)
-    
+def get_slot_to_update(state_dict, intents_extracted):
+    slot_to_update = {intent: [] for intent in intents_extracted}
+
+    for best_action in state_dict["DM"]:
+        next_best_action = best_action["next_best_action"]
+        
+        # Extract intent from next_best_action (format: "confirmation(intent)")
+        match = re.match(r".*\((.*?)\)", next_best_action)  
+        if match:
+            intent = match.group(1)
+            args_key = f"args({intent})"  # Correct key formatting
+            
+            if intent in intents_extracted and args_key in best_action:
+                if "details" in best_action[args_key]:
+                    slot_to_update[intent] = best_action[args_key]["details"]  # Direct assignment
+
     return slot_to_update
 
 def validate_USD(state_dict, out_NLU2, slot_to_update, intents_extracted, action):
@@ -306,22 +376,6 @@ def build_prompt_for_USD(state_dict, slot_to_update):
     # print("PROMPT: \n\n", str(prompt)) 
 
     return prompt
-
-
-def get_terminal_width():
-    """Returns the width of the terminal, with a fallback to 80 if unknown."""
-    return os.get_terminal_size().columns if sys.stdout.isatty() else 80
-
-def center_text(text):
-    """Centers a given text based on terminal width."""
-    term_width = get_terminal_width()
-    centered_lines = []
-    
-    for line in text.split("\n"):
-        padding = (term_width - len(line)) // 2
-        centered_lines.append(" " * max(0, padding) + line)
-
-    return "\n".join(centered_lines)
 
 def clear_last_line():
     """Clears the last line written in the terminal."""

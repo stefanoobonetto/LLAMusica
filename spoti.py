@@ -1,9 +1,9 @@
 import os
+import sys
 import time
 import glob
 import random
 import spotipy
-from utils import get_terminal_width, center_text, PRINT_DEBUG
 from spotipy.oauth2 import SpotifyOAuth
 
 CLIENT_ID = '181dea1437d14614ae1f6cc4e6f0a54a'
@@ -30,6 +30,8 @@ SCOPE = (
     "user-read-email",
     "user-read-private"
 )
+
+PRINT_DEBUG = False
 
 recommendations = {
   "pop": [
@@ -277,6 +279,20 @@ def clear_cache():
         if PRINT_DEBUG:
             print(f"Removed cache file: {cache_file}")
 
+def get_terminal_width():
+    """Returns the width of the terminal, with a fallback to 80 if unknown."""
+    return os.get_terminal_size().columns if sys.stdout.isatty() else 80
+
+def center_text(text):
+    """Centers a given text based on terminal width."""
+    term_width = get_terminal_width()
+    centered_lines = []
+    
+    for line in text.split("\n"):
+        padding = (term_width - len(line)) // 2
+        centered_lines.append(" " * max(0, padding) + line)
+
+    return "\n".join(centered_lines)
 
 def print_spoti_logo():
     GREEN = "\033[92m"  # Spotify Green

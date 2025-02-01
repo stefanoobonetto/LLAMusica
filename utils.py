@@ -7,8 +7,6 @@ import textwrap
 
 from spoti import *
 
-intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "get_recommendations", "out_of_domain"]
-PROMPT_NLU = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU.txt")
 PROMPT_NLU_INTENTS = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_intents.txt")
 PROMPT_NLU_SLOTS = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLU_slots.txt")
 PROMPT_DM = os.path.join(os.path.dirname(__file__), "prompts/prompt_DM.txt")
@@ -18,23 +16,17 @@ PROMPT_COT_DETECTION = os.path.join(os.path.dirname(__file__), "prompts/prompt_C
 
 PRINT_DEBUG = True
 
+intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "get_recommendations", "out_of_domain"]
 info_intents = ["artist_info", "song_info", "album_info"]
 
-correspondences_intents = {
-    "artist_info": "artist_name",
-    "song_info": "song_name",
-    "album_info": "album_name"
-}
-
 corresponding_actions = {
-        "artist_info": get_artist_info,
-        "song_info": get_song_info,
-        "album_info": get_album_info,
-        "user_top_tracks": get_user_top_tracks,
-        "user_top_artists": get_user_top_artists,
-        "get_recommendations": get_recommendations,
-    }
-
+    "artist_info": get_artist_info,
+    "song_info": get_song_info,
+    "album_info": get_album_info,
+    "user_top_tracks": get_user_top_tracks,
+    "user_top_artists": get_user_top_artists,
+    "get_recommendations": get_recommendations,
+}
 info_entity = {
     "artist_info": ["artist_name"],
     "song_info": ["song_name", "artist_name"],
@@ -258,15 +250,6 @@ def validate_DM(response, check_type):
     return False
 
 def check_null_slots_and_update_state_dict(state_dict, out_USD, intents_extracted, slot_to_update):
-    # out_NLU2 = str(fix_json_string(out_NLU2))  # Ensure the string format is correct
-    
-    # slot_to_update.append("details")            # Add 'details' to the list of slots to update, so that if the action is confirmation and 
-                                                # user asked for something new, it can update the details 
-    
-    # for intent in intents_extracted:                                                    # nel caso di confirmation voglio aggiornare anche i details
-    #     for detail in state_dict["NLU"][intent]["slots"]["details"]:
-    #         if detail not in slot_to_update:            
-    #             slot_to_update.append(detail)
 
     if PRINT_DEBUG:
         print("\n\nSlots to update: ", slot_to_update)
@@ -275,10 +258,9 @@ def check_null_slots_and_update_state_dict(state_dict, out_USD, intents_extracte
     for intent in intents_extracted:
             for slot in slot_to_update:
                 if intent in info_intents and slot == "details":
-                        # Capture everything inside [ ] including brackets
+                        # Capture the whole list
                         match = re.search(rf'.*{slot}.*:\s*(\[[^\]]*\])', str(out_USD))
                 else:
-                    # Capture standard values
                     match = re.search(rf'.*{slot}.*:\s*["\']?(.+?)["\']?(?=\s|$)', str(out_USD))                
             
                 if match:
@@ -286,9 +268,8 @@ def check_null_slots_and_update_state_dict(state_dict, out_USD, intents_extracte
                                 
                 if PRINT_DEBUG:
                     print(f"Catch new value for {slot}: {new_value}")
-                state_dict["NLU"][intent]["slots"][slot] = new_value  # Update state_dict
+                state_dict["NLU"][intent]["slots"][slot] = new_value  
 
-        
     return state_dict
 
 def get_slot_to_update(state_dict):
@@ -301,18 +282,15 @@ def get_slot_to_update(state_dict):
     return slot_to_update
 
 def validate_USD(state_dict, out_NLU2, slot_to_update, intents_extracted, action):
-        
     if action == "confirmation":
-        for intent in intents_extracted:                                                    # nel caso di confirmation voglio aggiornare anche i details
+        for intent in intents_extracted:                # nel caso di confirmation voglio aggiornare anche i details
             if intent in info_intents:
                 for detail in state_dict["NLU"][intent]["slots"]["details"]:
                     if detail not in slot_to_update:            
                         slot_to_update.append(detail)
                     
     for slot in slot_to_update:
-    # Use regex to extract the value of the slot
         match = re.search(rf'.*{re.escape(slot)}.*:\s*(.+)', str(out_NLU2))
-
         if not match: 
                return False
     return True     

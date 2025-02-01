@@ -1,7 +1,6 @@
 import re
 import json
 
-import time
 from spoti import *
 from utils import *
 from model_query import *

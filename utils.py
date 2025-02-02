@@ -14,7 +14,7 @@ PROMPT_NLG = os.path.join(os.path.dirname(__file__), "prompts/prompt_NLG.txt")
 PROMPT_USD = os.path.join(os.path.dirname(__file__), "prompts/prompt_USD.txt")
 PROMPT_COT_DETECTION = os.path.join(os.path.dirname(__file__), "prompts/prompt_COT_detection.txt")
 
-PRINT_DEBUG = False
+PRINT_DEBUG = True
 
 intents = ["artist_info", "song_info", "album_info", "user_top_tracks", "user_top_artists", "comparison", "get_recommendations", "out_of_domain"]
 info_intents = ["artist_info", "song_info", "album_info"]
@@ -81,7 +81,6 @@ def final_check_NLU(state_dict, intents_extracted):
             to_delete.append(intent)
     intents_extracted = [intent for intent in intents_extracted if intent not in to_delete]
     return intents_extracted        
-
 
 def extract_intents_build_slots_input(user_input, state_dict, out_NLU_intents):
     

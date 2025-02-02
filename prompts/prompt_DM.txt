@@ -16,7 +16,7 @@ The output must always be a list containing one or more JSON objects (depending 
   }
 }
 
-Is FUNDAMENTAL that you provide only this list, no additional information or comments, simply that list containing one or more json objects.
+Is FUNDAMENTAL that you provide only this list, no additional information or comments, simply that list containing one or more JSON objects.
 
 Rules for Determining the Next Best Action:
 1. Missing Slot Values (next_best_action = "request_info(intent)"):
@@ -35,7 +35,8 @@ Rules for Determining the Next Best Action:
    - Examples:
      Input: { "song_info": { "slots": { "song_name": "Perfect", "artist_name": "Ed Sheeran", "details": ["duration", "genre"] } } } 
      Output: { "next_best_action": "confirmation(song_info)", "args(song_info)": { "song_name": "Perfect", "artist_name": "Ed Sheeran", "details": ["duration", "genre"] } }
-
+   - In the case of out_of_domain intent, we'll always have a confirmation, no request_info.
+   
 3. Special Case for "artist_name" in Details:
    - If "artist_name" appears in the details list but the value of "artist_name" is null, the action is still "confirmation(intent)" instead of "request_info".
    - Example:
@@ -53,6 +54,9 @@ Rules for Determining the Next Best Action:
      - For "get_recommendations", include "genre".
 
 Examples:
+Input: { "out_of_domain": { "slots": { "sentence_intent": "..." } } }  
+Output: { "next_best_action": "confirmation(out_of_domain)", "args(out_of_domain)": { "sentence_intent": "..." } }
+
 Input: { "artist_info": { "slots": { "artist_name": "The Weeknd", "details": ["followers", "popularity"] } } } 
 Output: { "next_best_action": "confirmation(artist_info)", "args(artist_info)": { "artist_name": "The Weeknd", "details": ["followers", "popularity"] } }
 

@@ -17,8 +17,6 @@ def build_GK():
     
     list_GK = {}
     
-    
-    
     for element_new_best_option in json.loads(DM_component_list):
         # element_new_best_option = fix_json_string(element_new_best_option)
         # element_new_best_option = json.loads(element_new_best_option)
@@ -30,39 +28,40 @@ def build_GK():
         # if PRINT_DEBUG:
         #       print(f"\n- action: {action} \n- intent: {intent}")
 
-        if action == "confirmation":
-            if PRINT_DEBUG:
-                print(f"\n{intent} requested. Fetching...")
-
-            info = corresponding_actions.get(intent)(element_new_best_option[f"args({intent})"])
-
-            if info:
-                # print(f"\Info fetched for {intent}:")
-                if PRINT_DEBUG:
-                    print("Info extracted for intent ", intent, ": ", info)
-
-                if intent in info_intents and intent != "artist_info":
-                    info = {k.replace("artists", "artist_name"): v for k, v in info.items()}
-            
-                if intent != "user_top_tracks" and intent != "user_top_artists":
-                    list_GK[intent] = str(info)
-                else:
-                    list_GK[intent] = [str(entity) for entity in info]              # entity may be either an artist or a track
-            else:
-                if PRINT_DEBUG:
-                    print("\nFailed to fetch info or no data returned.")
-        elif action == "request_info":
-            if intent in info_intents:
-
-                info = corresponding_actions.get(intent)(element_new_best_option[f"args({intent})"])
-                
-                if info:
+        if intent != "out_of_domain":
+                if action == "confirmation":
                     if PRINT_DEBUG:
-                        print("Info extracted for intent ", intent, ": ", info)
-                    list_GK[intent] = info                
-        else:
-            if PRINT_DEBUG:
-                print(f"\nUnsupported action: {action}.")
+                        print(f"\n{intent} requested. Fetching...")
+
+                    info = corresponding_actions.get(intent)(element_new_best_option[f"args({intent})"])
+
+                    if info:
+                        # print(f"\Info fetched for {intent}:")
+                        if PRINT_DEBUG:
+                            print("Info extracted for intent ", intent, ": ", info)
+
+                        if intent in info_intents and intent != "artist_info":
+                            info = {k.replace("artists", "artist_name"): v for k, v in info.items()}
+                    
+                        if intent != "user_top_tracks" and intent != "user_top_artists":
+                            list_GK[intent] = str(info)
+                        else:
+                            list_GK[intent] = [str(entity) for entity in info]              # entity may be either an artist or a track
+                    else:
+                        if PRINT_DEBUG:
+                            print("\nFailed to fetch info or no data returned.")
+                elif action == "request_info":
+                    if intent in info_intents:
+
+                        info = corresponding_actions.get(intent)(element_new_best_option[f"args({intent})"])
+                        
+                        if info:
+                            if PRINT_DEBUG:
+                                print("Info extracted for intent ", intent, ": ", info)
+                            list_GK[intent] = info                
+                else:
+                    if PRINT_DEBUG:
+                        print(f"\nUnsupported action: {action}.")
     
     state_manager.update_section("GK", list_GK)
     return state_manager.state_dict
@@ -211,8 +210,6 @@ def process_DM(intents_extracted):
     while new_fixed_list == []:
         
         out_DM_list = query_DM_model_with_validation(PROMPT_DM, intents_extracted)
-        
-        
         
         try:
             for elem in out_DM_list:
@@ -389,7 +386,7 @@ if __name__ == "__main__":
 
     pretty_print()
     
-    authenticate(force_auth=True)
+    authenticate(force_auth=False)
     
     print_system(f"Hi {get_username()}, how can I help you?", auth=True)
     user_input = input_user("You: ")

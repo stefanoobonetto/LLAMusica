@@ -12,7 +12,7 @@ Follow these rules strictly:
    - user_top_tracks: {time_frame, limit} where time_frame can be "short_term" (1 month or less), "medium_term" (6 months or less), or "long_term" (several years or all time)
    - user_top_artists: {time_frame, limit}
    - get_recommendations: {genre, limit} where genre can be a value between [ "pop", "rock", "jazz", "electronic", "hiphop", "r&b", "soul", "classical", "folk", "reggae"]
-   - out_of_domain: {sentence_intent}
+   - out_of_domain: {sentence_intent} 
 
 2. Explicit Slot Extraction: Extract only slots explicitly mentioned in the user input. If a slot value is not specified, set it to null. 
    Do not infer or add information not in the input.
@@ -57,6 +57,11 @@ if available the artist_name (if the entity is a song or an album).
                - Intent: "user_top_artists" 
             Output:
                   "user_top_artists": {"slots": {"time_frame": "medium_term", "limit": 3}}
+
+6. out_of_domain intent: in this case simply make "sentence_intent": user_input. Is FUNDAMENTAL that you provide the whole user_input as sentence_intent slot.
+   Example:
+      Input: "How many eggs do I have to put in my chocolate cake?"
+      Output: "out_of_domain": {"slots": {"sentence_intent": "How many eggs do I have to put in my chocolate cake?"}}
 
 6. Format and Rules:
    - Use plain text output with no comments or extra information.

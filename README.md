@@ -10,6 +10,7 @@
 LLAMusica is an AI-driven conversational assistant that enhances the way users discover and interact with music. By integrating **Spotify APIs** with **Llama3.2**, it provides detailed insights into songs, artists, albums, and user listening habits—all through a seamless and engaging chatbot experience.  
 
 You can find a video of some study cases [here](https://youtu.be/YRIkrx3f7iA).
+
 ---
 
 

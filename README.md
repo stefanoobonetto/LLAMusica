@@ -1,5 +1,5 @@
 <p align="center"> 
-  <img src="assets/LLAMusica_logo.png" alt="Logo" width="50%"/> 
+  <img src="assets/LLAMusica_logo.png" alt="Logo" width="30%"/> 
 </p> 
 
 

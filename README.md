@@ -76,7 +76,7 @@ LLAMusica follows a structured **Natural Language Understanding (NLU) and Dialog
 - Adapts responses dynamically to maintain conversation context.  
 
 <p align="center"> 
-  <img src="assets/pipeline.png" alt="Pipeline" width="70%"/> <br> <i>Figure 1: LLAMusica complete pipeline.</i> 
+  <img src="assets/pipeline.png" alt="Pipeline" width="50%"/> <br> <i>Figure 1: LLAMusica complete pipeline.</i> 
 </p> 
 
 ---

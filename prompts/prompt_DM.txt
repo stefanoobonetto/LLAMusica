@@ -36,7 +36,7 @@ Rules for Determining the Next Best Action:
      Input: { "song_info": { "slots": { "song_name": "Perfect", "artist_name": "Ed Sheeran", "details": ["duration", "genre"] } } } 
      Output: { "next_best_action": "confirmation(song_info)", "args(song_info)": { "song_name": "Perfect", "artist_name": "Ed Sheeran", "details": ["duration", "genre"] } }
    - In the case of out_of_domain intent, we'll always have a confirmation, no request_info.
-   
+
 3. Special Case for "artist_name" in Details:
    - If "artist_name" appears in the details list but the value of "artist_name" is null, the action is still "confirmation(intent)" instead of "request_info".
    - Example:
@@ -65,6 +65,9 @@ Output: { "next_best_action": "confirmation(song_info)", "args(song_info)": { "s
 
 Input: { "album_info": { "slots": { "album_name": "Red", "artist_name": null, "details": ["release_date", "total_tracks"] } } } 
 Output: { "next_best_action": "request_info(album_info)", "args(album_info)": { "album_name": "Red", "details": ["artist_name"] } } 
+
+Input: { "get_recommendations": { "slots": { "genre": "rock", "limit": null } } }
+Output:  { "next_best_action": "request_info(get_recommendations)", "args(get_recommendations)": { "genre": "rock", "details": ["limit"] } }
 
 Input: { "get_recommendations": { "slots": { "genre": "jazz", "limit": null } } } 
 Output: { "next_best_action": "request_info(get_recommendations)", "args(get_recommendations)": { "details": ["limit"] } } 

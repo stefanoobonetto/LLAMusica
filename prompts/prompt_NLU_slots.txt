@@ -3,6 +3,13 @@ Is CRUCIAL that you extract slot values presents in the user input, but not infe
 e.g. 
 If the user input is like "Give me the duration of Someone Like You" and he doesn't specify any artist, the slot "artist_name" will be null, not "Adele".
 At the same manner, if user input is "Show me my top tracks of the last month." limit will be null since is not specified.
+
+Is FUNDAMENTAL that you return the output in this format:
+- <intent1>: {"slots": {<slot1>: <slot1_value>, <slot2>: <slot2_value>, ...}}
+- <intent2>: {"slots": {<slot1>: <slot1_value>, <slot2>: <slot2_value>, ...}}
+
+Ensure the output adheres to these rules exactly. No extra comments or information. The output must remain consistent with the format mentioned above.
+
 Follow these rules strictly:
 
 1. Slot Templates: Use these templates for extraction:
@@ -17,7 +24,7 @@ Follow these rules strictly:
 2. Explicit Slot Extraction: Extract only slots explicitly mentioned in the user input. If a slot value is not specified, set it to null. 
    Do not infer or add information not in the input.
    In particular, for user_top_artists and user_top_tracks intents, if the slot limit is not explicitly specified in the input, leave it to null.
-   
+
 3. Consistency: Ensure slots match their intents:
    - Example Input: "What are the genres of the album Divide?"
                     - Intent: album_info
@@ -58,7 +65,7 @@ if available the artist_name (if the entity is a song or an album).
             Output:
                   "user_top_artists": {"slots": {"time_frame": "medium_term", "limit": 3}}
 
-6. out_of_domain intent: in this case simply make "sentence_intent": user_input. Is FUNDAMENTAL that you provide the whole user_input as sentence_intent slot.
+6. out_of_domain intent: in this case simply make "sentence_intent": user_input. Is FUNDAMENTAL that you provide THE WHOLE user_input as sentence_intent slot.
    Example:
       Input: "How many eggs do I have to put in my chocolate cake?"
       Output: "out_of_domain": {"slots": {"sentence_intent": "How many eggs do I have to put in my chocolate cake?"}}
@@ -76,14 +83,13 @@ if available the artist_name (if the entity is a song or an album).
    - Wrong: {"slots": {"song_name": "Hotel California", "artist_name": null, "genres": ["Rock", "Soft Rock"]}}
    - Correct: {"slots": {"song_name": "Hotel California", "artist_name": null, "details": ["genres"]}}
 
+8. If the user didn't specify any detail in particular, add "all" to details list.
+   Example: "Tell me about the song Bad Guy by Billie Eilish."
+            Intent1: song_info
+   Output:  "song_info": {"slots": {"song_name": "Bad Guy", "artist_name": "Billie Eilish", "details": ["all"]}}
+
 8. Particular case: artist_name
    In the case of song_info and album_info, "artist_name" can be either a single slot and an element in "details" list. It will be always a single slot, 
    if the user wants explicitly to know the artist_name it will be added into details list:
    - Input: "Which is the artist of the song Columbia?"
      Output: "song_info": {"slots": {"song_name": "Columbia", "artist_name": null, "details": [ "artist_name" ]}}
-
-Is FUNDAMENTAL that you return the output in this format:
-- <intent1>: {"slots": {<slot1>: <slot1_value>, <slot2>: <slot2_value>, ...}}
-- <intent2>: {"slots": {<slot1>: <slot1_value>, <slot2>: <slot2_value>, ...}}
-
-Ensure the output adheres to these rules exactly. No extra comments or information. The output must remain consistent with the format mentioned above.

@@ -28,9 +28,13 @@ Examples:
         same_query
     Input 4:
         get_recommendations / 5 results please (request_info)
-    Output 3:
+    Output 4:
         same_query
-
+    Input 5:
+        ['u', 's', 'e', 'r', '_', 't', 'o', 'p', '_', 'a', 'r', 't', 'i', 's', 't', 's'] / Show me 10 artists please. (None)
+    Output 5:
+        same_query
+        
 Pay attention if previous_entity is user_top_artists or user_top_tracks and between brackets there is (confirmation), you MUST output
     change_of_query
 otherways if it's (request_info) you may find a number as user_input if the limit is asked, or a range of time if time_frame is asked, in this cas you'll 

@@ -6,6 +6,8 @@ import random
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
+# Configuration data for Spotify APIs
+
 CLIENT_ID = '181dea1437d14614ae1f6cc4e6f0a54a'
 CLIENT_SECRET = 'f03f9a3bd9554adcb58d6f12a8fcdc0a'
 SPOTIPY_REDIRECT_URI = 'http://localhost:8080'
@@ -32,6 +34,8 @@ SCOPE = (
 )
 
 PRINT_DEBUG = False
+
+# These recommendations based on genre are used to substitute the Spotify APIs ge_recommendations fucntion, which actually doesn't work
 
 recommendations = {
   "pop": [
@@ -226,7 +230,6 @@ class Artist:
             f"  Spotify URL: {self.spotify_url}\n"
         )
 
-
 class Song:
     def __init__(self, id, name, artists, album, release_date, duration, popularity, spotify_url, preview_url):
         self.id = id
@@ -274,17 +277,42 @@ class Album:
         )
 
 def clear_cache():
+    """
+    Removes all cached authentication files.
+
+    - Deletes any cached authentication files starting with ".cache".
+    - In this way, no authentication is memorized, and the user must re-authenticate.
+    """
+
     for cache_file in glob.glob(".cache*"):
         os.remove(cache_file)
         if PRINT_DEBUG:
             print(f"Removed cache file: {cache_file}")
 
 def get_terminal_width():
-    """Returns the width of the terminal, with a fallback to 80 if unknown."""
+    """
+    Returns the width of the terminal, with a fallback value of 80.
+
+    Returns:
+        int: Terminal width in characters.
+    """
+
     return os.get_terminal_size().columns if sys.stdout.isatty() else 80
 
 def center_text(text):
-    """Centers a given text based on terminal width."""
+    """
+    Centers a given text based on the terminal width.
+
+    - Splits the input text into lines.
+    - Calculates padding to center each line.
+
+    Args:
+        text (str): The text to be centered.
+
+    Returns:
+        str: Centered text.
+    """
+
     term_width = get_terminal_width()
     centered_lines = []
     
@@ -295,8 +323,16 @@ def center_text(text):
     return "\n".join(centered_lines)
 
 def print_spoti_logo():
-    GREEN = "\033[92m"  # Spotify Green
-    RESET = "\033[0m"   # Reset to default color
+    """
+    Displays a Spotify logo using ASCII art.
+
+    - Colors the logo in Spotify green.
+    - Centers the logo based on the terminal width.
+    - Uses a slight delay to create a loading effect.
+    """
+
+    GREEN = "\033[92m"  
+    RESET = "\033[0m"   
 
     spotify_logo = f"""{GREEN}    
 ⠀⠀⠀⠀⠀⠀⠀⢀⣠⣤⣤⣶⣶⣶⣶⣤⣤⣄⡀⠀⠀⠀⠀⠀⠀⠀
@@ -314,23 +350,34 @@ def print_spoti_logo():
 ⠀⠀⠀⠀⠀⠀⠀⠈⠙⠛⠛⠿⠿⠿⠿⠛⠛⠋⠁⠀⠀⠀⠀⠀⠀⠀
 {RESET}"""
 
-    # Get the terminal width
     term_width = get_terminal_width()
 
-    # Print Spotify Logo Centered
     for line in spotify_logo.split("\n"):
-        # Calculate padding for centering
         padding = (term_width - len(line)) // 2
         print(" " * max(0, padding) + line)
-        time.sleep(0.05)  # Small delay for a "loading" effect
-
+        time.sleep(0.05)
 
 def authenticate(force_auth=False):
+    """
+    Authenticates the user with Spotify and returns a Spotify client.
+
+    - Uses `SpotifyOAuth` for authentication.
+    - Clears cache if `force_auth` is True.
+    - Displays a login prompt and Spotify logo.
+
+    Args:
+        force_auth (bool, optional): Whether to force re-authentication.
+
+    Returns:
+        spotipy.Spotify: An authenticated Spotify client instance.
+    """
+    
     global sp
     if force_auth:
         clear_cache()
     print(center_text("\n\nPlease log in to your Spotify account..."))
     print_spoti_logo()
+    
     sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
         client_id=CLIENT_ID,
         client_secret=CLIENT_SECRET,
@@ -342,54 +389,52 @@ def authenticate(force_auth=False):
 
 def get_recommendations(args):
     """
-    Get a list of randomly selected recommended songs based on the genre provided.
+    Retrieves a list of recommended songs based on a specified genre.
 
-    Parameters:
-        args (dict): Dictionary containing:
-            - genre (str): The genre of the songs to recommend.
+    - Uses a predefined dictionary of genre-based song recommendations.
+    - Selects a random sample of songs based on the provided limit.
+
+    Args:
+        args (dict): A dictionary containing:
+            - genre (str): The genre to get recommendations for.
             - limit (int): The number of songs to recommend.
 
     Returns:
         list[str]: A list of randomly selected recommended songs.
     """
-    genre = args.get("genre")  # Use .get() to avoid KeyError
-    limit = int(args.get("limit"))  # Use .get() to avoid KeyError
-    
-    if PRINT_DEBUG:     
-        print("ARGS: ", args)  # Debugging
-        print("Genre: ", genre, " - Limit: ", limit)  # Debugging
-    
-    # Validate genre
+
+    genre = args.get("genre")  
+    limit = int(args.get("limit"))
+
     if genre not in recommendations:
         if PRINT_DEBUG: 
-            print(f"❌ Genre '{genre}' not found in recommendations.")  # Debugging
+            print(f"Genre '{genre}' not found in recommendations.")  
         return []
 
-    # Validate limit
     if not isinstance(limit, int) or limit <= 0:
         if PRINT_DEBUG: 
-            print(f"❌ Invalid limit: {limit}")  # Debugging
-        return []
+            print(f"Invalid limit: {limit}, returning all recommendations.") 
+        return recommendations[genre]
 
-    # Get a random sample of songs
     return random.sample(recommendations[genre], min(limit, len(recommendations[genre])))
-
-#  SEARCH A GIVEN SONG AND RETURN IT OR RETURN THE DETAIL ASKED FOR
 
 def get_song_info(args):
     """
-    Search for a song on Spotify and return its details.
+    Searches for a song on Spotify and retrieves its details.
 
-    Parameters:
-        song_name (str): The name of the song to search for.
-        detail (str, optional): Specific detail to extract from the song information. 
-                                Options: "id", "name", "artists", "album", "release_date", 
-                                "duration_ms", "popularity", "spotify_url", "preview_url".
+    - Supports filtering by artist name and retrieving specific details.
+    - Returns either a dictionary of requested details or a `Song` object.
+
+    Args:
+        args (dict): A dictionary containing:
+            - song_name (str): The name of the song.
+            - artist_name (str, optional): The artist name (if provided).
+            - details (list, optional): Specific details to return.
 
     Returns:
-        Song: An instance of the Song class with detailed information about the song.
-        None: If no song is found or the query fails.
+        Song | dict | None: A `Song` object, a dictionary of details, or None if not found.
     """
+
     song_name = args["song_name"] 
     artist_name = args["artist_name"] if "artist_name" in args.keys() else None
     details = args["details"] if "details" in args.keys() else None
@@ -400,11 +445,6 @@ def get_song_info(args):
     if details and "artist_name" in details:
         details = ["artists" if detail == "artist_name" else detail for detail in details]
 
-    # print("Song name: ", song_name)
-    # print("Artist name: ", artist_name)
-    # print("Details: ", details)
-
-    # song_query = f"track:{song_name} {artist_name}" if artist_name else f"track:{song_name}"
     song_query = f"track:{song_name}"
     results = sp.search(q=song_query, type="track", limit=1)
 
@@ -413,9 +453,7 @@ def get_song_info(args):
             if PRINT_DEBUG:
                 print(f"Artist '{artist_name}' not present in {results['tracks']['items'][0]['artists'][0]['name']}, retrying...")
             results = sp.search(q=song_query, type="track", limit=1)
-    
-    # print("\n\n\nResults: ", results)
-    
+        
     if results['tracks']['items']:
         track = results['tracks']['items'][0]
         song = Song(
@@ -430,7 +468,6 @@ def get_song_info(args):
             preview_url=track['preview_url']
         )
         
-        # print("SONG: ", song)
         # Return a specific detail/s if requested, otherwise return the Song object
         if details and "all" not in details:
             return_dic = {}
@@ -440,31 +477,32 @@ def get_song_info(args):
         return song
     return None
 
-# SEARCH A GIVEN ARTIST AND RETURN IT OR RETURN THE DETAIL ASKED FOR
-
 def get_artist_info(args):
     """
-    Search for an artist on Spotify and return their details, including top tracks.
+    Searches for an artist on Spotify and retrieves their details.
+
+    - Returns either a dictionary of requested details or an `Artist` object.
+
+    Args:
+        args (dict): A dictionary containing:
+            - artists (str): The name of the artist.
+            - details (list): Specific details to return.
+
+    Returns:
+        Artist | dict | None: An `Artist` object, a dictionary of details, or None if not found.
     """
+
     if not args:
         if PRINT_DEBUG:
             print("No arguments provided.")
         return None
 
-    # print("\n\n-----> ARGS: ", args)
-
     artist_name = args["artists"]
     details = args["details"]
 
-    # print("Artist name: ", artist_name)
-    # print("Details: ", details)
-
     try:
-        # Search for the artist using Spotify's API
         results = sp.search(q=f"artist:{artist_name}", type="artist", limit=1)
 
-        # print("\n\n\nResults: ", results)
-        
         if results['artists']['items']:
             artist_data = results['artists']['items'][0]
 
@@ -489,36 +527,31 @@ def get_artist_info(args):
             print(f"Error fetching artist info: {e}")
         return None
     
-# SEARCH A GIVEN ALBUM AND RETURN IT OR RETURN THE DETAIL ASKED FOR
-
 def get_album_info(args):
     """
-    Search for an album on Spotify and return its details.
+    Searches for an album on Spotify and retrieves its details.
 
-    Parameters:
-        album_name (str): The name of the album to search for.
-        detail (str, optional): Specific detail to extract from the album information.
-                                Options: "id", "name", "artists", "release_date", "total_tracks",
-                                "genres", "spotify_url", "images".
+    - Supports filtering by artist name and retrieving specific details.
+    - Returns either a dictionary of requested details or an `Album` object.
+
+    Args:
+        args (dict): A dictionary containing:
+            - album_name (str): The name of the album.
+            - artist_name (str, optional): The artist name (if provided).
+            - details (list): Specific details to return.
 
     Returns:
-        Album: An instance of the Album class with detailed information about the album.
-        None: If no album is found or the query fails.
-    """    
+        Album | dict | None: An `Album` object, a dictionary of details, or None if not found.
+    """
 
     if PRINT_DEBUG:
         print("ARGS: ", args)
 
     album_name = args["album_name"] 
-    artist_name = args["artist_name"] if "artist_name" in args.keys() else None
     details = args["details"]
 
     if details and "artist_name" in details:
         details = ["artists" if detail == "artist_name" else detail for detail in details]
-
-    # print("Album name: ", album_name)
-    # print("Artist name: ", artist_name)
-    # print("Details: ", details)
         
     results = sp.search(q=f"album:{album_name}", type="album", limit=1)
     if results['albums']['items']:
@@ -537,59 +570,37 @@ def get_album_info(args):
         # Return a specific detail/s if requested, otherwise return the Album object
         if details and "all" not in details:
             return_dic = {}
-            
-            # print("\n\n\nASK for DETAILS: ", details, "\n\n\n")
             for detail in details:
                 return_dic[detail] = getattr(album, detail, None)
             return return_dic
         return album
     return None
 
-# GET NEWEST RELEASES
-
-def get_new_releases(country=None, limit=10):
+def get_username():
     """
-    Fetch new album releases on Spotify.
-
-    Parameters:
-        limit (int, optional): Number of new releases to fetch. Default is 10.
+    Retrieves the current authenticated Spotify user's display name.
 
     Returns:
-        list[Album]: A list of Album instances representing new releases.
+        str: The display name of the user, or "Unknown" if not found.
     """
-    results = sp.new_releases(country=country, limit=limit)
-    if results['albums']['items']:
-        return [
-            Album(
-                id=album['id'],
-                name=album['name'],
-                artists=[artist['name'] for artist in album['artists']],
-                release_date=album['release_date'],
-                total_tracks=album['total_tracks'],
-                genres=[],  # Genres are not provided in the new releases endpoint
-                spotify_url=album['external_urls']['spotify'],
-                images=album['images']
-            )
-            for album in results['albums']['items']
-        ]
-    return None
 
-# GET USER'S TOP TRACKS
-
-def get_username():
-    return sp.me().get('display_name', 'Unknown')  # User's chosen display name
+    return sp.me().get('display_name', 'Unknown')  
 
 def get_user_top_tracks(args):
     """
-    Fetch the user's top tracks.
+    Fetches the user's top tracks on Spotify.
 
-    Parameters:
-        limit (int, optional): Number of top tracks to fetch. Default is 10.
+    - Uses Spotify's `current_user_top_tracks` API.
+
+    Args:
+        args (dict): A dictionary containing:
+            - time_frame (str): The time range for the top tracks (short_term, medium_term, long_term).
+            - limit (int): The number of top tracks to retrieve.
 
     Returns:
-        list[Song]: A list of Song instances representing the user's top tracks.
+        list[str] | None: A list of top track names with artist names or None if no results are found.
     """
-    
+
     time_range = args["time_frame"]
     limit = args["limit"]
     
@@ -601,17 +612,19 @@ def get_user_top_tracks(args):
         ]
     return None
 
-# GET USER'S TOP ARTISTS
-
 def get_user_top_artists(args):
     """
-    Fetch the user's top artists.
+    Fetches the user's top artists on Spotify.
 
-    Parameters:
-        limit (int, optional): Number of top artists to fetch. Default is 10.
+    - Uses Spotify's `current_user_top_artists` API.
+
+    Args:
+        args (dict): A dictionary containing:
+            - time_frame (str): The time range for the top artists (short_term, medium_term, long_term).
+            - limit (int): The number of top artists to retrieve.
 
     Returns:
-        list[Artist]: A list of Artist instances representing the user's top artists.
+        list[str] | None: A list of top artist names or None if no results are found.
     """
     
     time_range = args["time_frame"]
@@ -622,41 +635,4 @@ def get_user_top_artists(args):
         return [
             artist['name'] for artist in results['items']
         ]
-    return None
-
-# GET ARTIST'S RELATED ARTISTS
-
-def get_related_artists(artist_name):
-    artist_data = get_artist_info(artist_name)
-    if not artist_data:
-        if PRINT_DEBUG:
-            print(f"Artista '{artist_name}' non trovato.")
-        return None
-
-    artist_id = artist_data.id
-    try:
-        results = sp.artist_related_artists(artist_id)
-        if 'artists' in results and results['artists']:
-            return [
-                Artist(
-                    id=related_artist['id'],
-                    name=related_artist['name'],
-                    genres=related_artist['genres'],
-                    followers=related_artist['followers']['total'],
-                    popularity=related_artist['popularity'],
-                    spotify_url=related_artist['external_urls']['spotify'],
-                    images=related_artist['images']
-                )
-                for related_artist in results['artists']
-            ]
-        else:
-            if PRINT_DEBUG:
-                print(f"Nessun artista correlato trovato per '{artist_name}'.")
-            return None
-    except spotipy.exceptions.SpotifyException as e:
-        if PRINT_DEBUG:
-            print(f"Errore durante la ricerca degli artisti correlati: {e}")
-    except Exception as e:
-        if PRINT_DEBUG:
-            print(f"Errore sconosciuto durante la ricerca degli artisti correlati: {e}")
     return None

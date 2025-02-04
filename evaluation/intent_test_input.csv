@@ -1,0 +1,51 @@
+user_input,expected_output
+What is the album and artist for the song Bad Guy?,- Intent: song_info
+How many followers does Francesco Guccini have?,- Intent: artist_info
+Give me some suggestions about jazz music.,- Intent: get_recommendations
+Suggest me some pop songs.,- Intent: get_recommendations
+What's the weather today in Rennes?,- Intent: out_of_domain
+How many tracks are in the album Thriller?,- Intent: album_info
+Who is the artist of the song Shape of You?,- Intent: song_info
+Tell me about the song Rolling in the Deep.,- Intent: song_info
+What are the genres of the album Abbey Road?,- Intent: album_info
+How popular is Ed Sheeran?,- Intent: artist_info
+Show me my top tracks for the last month.,- Intent: user_top_tracks
+Who sings Bohemian Rhapsody?,- Intent: song_info
+What is the duration of Hotel California?,- Intent: song_info
+List my top artists of the past year.,- Intent: user_top_artists
+Tell me about the latest album of The Weeknd.,- Intent: album_info
+How many monthly listeners does Taylor Swift have?,- Intent: artist_info
+Find me some electronic music recommendations.,- Intent: get_recommendations
+What is the release date of the song Blinding Lights?,- Intent: song_info
+Who is the artist of the album Rumours?,- Intent: album_info
+Tell me the genres of the song Someone Like You.,- Intent: song_info
+How many tracks does the album Lemonade have?,- Intent: album_info
+Show me my top artists from the past six months.,- Intent: user_top_artists
+What are some good reggae songs?,- Intent: get_recommendations
+Tell me about the song Yesterday by The Beatles.,- Intent: song_info
+How many followers does Drake have on Spotify?,- Intent: artist_info
+What is the total number of tracks in Dark Side of the Moon?,- Intent: album_info
+Suggest me some R&B music.,- Intent: get_recommendations
+What is the genre of the song Uptown Funk?,- Intent: song_info
+Who sings the song Wonderwall?,- Intent: song_info
+Find me some hip-hop music recommendations.,- Intent: get_recommendations
+Tell me about the song Bad Guy by Billie Eilish.,- Intent: song_info
+What is the total track count of the album 1989?,- Intent: album_info
+How popular is the artist Post Malone?,- Intent: artist_info
+Show me my top tracks from the past year.,- Intent: user_top_tracks
+What is the duration of the song Perfect?,- Intent: song_info
+Who is the artist behind the album Divide?,- Intent: album_info
+Give me recommendations for classical music.,- Intent: get_recommendations
+What are my most played songs of the last six months?,- Intent: user_top_tracks
+Who sings the song Take Me to Church?,- Intent: song_info
+What is the release year of the album Born to Die?,- Intent: album_info
+Who is the artist of the song Dancing Queen?,- Intent: song_info
+How many total tracks are in the album Random Access Memories?,- Intent: album_info
+What are the genres of the song Hotel California? And the duration of Imagine?,"- Intent1: song_info \n- Intent2: song_info"
+Tell me how many tracks the album Divide has and the duration of Shape of You.,"- Intent1: album_info \n - Intent2: song_info"
+What is the release date of the song Blinding Lights and who is the artist?,"- Intent1: song_info \n - Intent2: song_info"
+Show me my top artists for the last month and also my top tracks.,"- Intent1: user_top_artists \n - Intent2: user_top_tracks"
+What are the genres of the album Lemonade and the popularity of Beyoncé?,"- Intent1: album_info \n - Intent2: artist_info"
+How many followers does The Weeknd have and what are my top tracks from last year?,"- Intent1: artist_info \n - Intent2: user_top_tracks"
+Tell me about the album Thriller and suggest me some similar music.,"- Intent1: album_info \n- Intent2: get_recommendations"
+Give me some electronic music recommendations and tell me the duration of 'Strobe' by Deadmau5.,"- Intent1: get_recommendations \n - Intent2: song_info"

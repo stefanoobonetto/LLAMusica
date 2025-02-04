@@ -40,9 +40,36 @@ You need to update the slots in the slots_to_update list based on the user_input
         
         Output:
             - "artist_name": "The Weeknd"
+    Input:
+        {
+            "NLU": {
+                "user_top_artists": {
+                    "slots": {
+                        "time_frame": "short_term",
+                        "limit": null
+                    }
+                }
+            },
+            "DM": [
+                {
+                    "next_best_action": "request_info(user_top_artists)",
+                    "args(user_top_artists)": {
+                        "details": [
+                            "limit"
+                        ]
+                    }
+                }
+            ],
+            "GK": {}
+        }
+        slots_to_update: ["limit"]
+        user_input: "Show me 10 artists please (request_info)"
+
+    Output:
+            - "limit": 10
     
     - Pay attention when in the slots_to_update is present the limit slot: you have to be precise in extracting the exact number of results 
-      the user wants to project.
+      the user wants to project and output it as integer.
 
 3. Handling (confirmation) Cases  
     - If `user_input` ends with (confirmation):  

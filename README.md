@@ -137,7 +137,7 @@ pip install -r requirements.txt
 ```
 
 ### 3. Set Up Spotify API Credentials
-Create a .env file and add your Spotify API credentials:
+Create a .env file and add your Spotify API credentials (you can also place them in the `spoti.py` file):
 
 ```bash
 SPOTIPY_CLIENT_ID="your_client_id"

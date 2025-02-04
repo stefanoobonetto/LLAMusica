@@ -1,3 +1,8 @@
+<p align="center"> 
+  <img src="assets/LLAMusica_logo.png" alt="Logo" width="50%"/> 
+</p> 
+
+
 # 🎵🐪 **LLAMusica** - AI-Powered Spotify Chatbot  
 
 > 🎧 **Your intelligent music assistant, one conversation at a time!**  
@@ -91,7 +96,7 @@ LLAMusica follows a structured **Natural Language Understanding (NLU) and Dialog
 
 <p align="center"> 
   <img src="assets/pipeline.png" alt="Pipeline" width="70%"/> <br> <i>Figure 1: LLAMusica complete pipeline.</i> 
-</p> ![alt text](image.png)
+</p> 
 
 ---
 

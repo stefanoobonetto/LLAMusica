@@ -8,9 +8,11 @@ from spotipy.oauth2 import SpotifyOAuth
 
 # Configuration data for Spotify APIs
 
-CLIENT_ID = '181dea1437d14614ae1f6cc4e6f0a54a'
-CLIENT_SECRET = 'f03f9a3bd9554adcb58d6f12a8fcdc0a'
-SPOTIPY_REDIRECT_URI = 'http://localhost:8080'
+# Please setup your Spotify APIs and place your data here  
+
+CLIENT_ID = "<place_your_client_id_here>"
+CLIENT_SECRET = "<place_your_client_secret_here>"
+SPOTIPY_REDIRECT_URI = "<place_your_redirect_uri_here>"
 SCOPE = (
     "ugc-image-upload",
     "user-read-playback-state",

@@ -14,53 +14,34 @@ LLAMusica is an AI-driven conversational assistant that enhances the way users d
 ## Key Features  
 
 - **Song Search & Insights**  
-  Retrieve song details, including release dates, popularity, duration, and artist collaborations.  
+  Retrieve song details, including release dates, popularity, duration, and artists.  
 
 - **Artist Exploration**  
-  Get in-depth artist profiles, including discographies, genres, and related artists.  
+  Get in-depth artist profiles, including discographies, genres, and popularity.  
 
 - **Album Discovery**  
-  Access tracklists, release dates, and cover art for any album.  
+  Access tracklists, release dates, and artists involved for any album.  
 
 - **Personalized Recommendations**  
-  Receive curated song suggestions based on genre preferences and listening history.  
+  Receive curated song suggestions based on genre preferences.  
 
 - **User Analytics**  
-  Fetch user listening history, top tracks, and artists over different time frames.  
+  Fetch user top tracks and artists over different time frames.  
 
 - **Multi-Intent Handling**  
-  Process complex queries involving multiple intents simultaneously  
-  (e.g., "Tell me about The Weeknd and recommend similar artists").  
-
+  Process complex queries involving multiple intents simultaneously.
+  
 - **Context-Aware Conversations**  
   Retains and updates conversation state dynamically, ensuring continuity and accurate responses.  
 
 - **Out-of-Domain Handling**  
-  Detects and gracefully handles queries outside the chatbot’s scope.  
+  Detects and gracefully handles queries outside the system’s scope.  
 
 ---
 
 ## Objective  
 
 LLAMusica is designed to provide a **seamless and intelligent** music discovery experience by combining the conversational capabilities of **Llama3.2** with the real-time music data from **Spotify APIs**. The system enables users to explore music in a structured, interactive manner, reducing the effort needed to retrieve relevant information.  
-
----
-
-## Potential Use Cases  
-
-- **Music Enthusiasts** – Easily search for songs, albums, and artist insights.  
-- **Playlist Curators** – Generate AI-driven song recommendations for new playlists.  
-- **Mood-Based Listeners** – Discover tracks based on mood, activity, or genre preferences.  
-- **Developers** – Explore AI-driven conversational systems with API integration.  
-
----
-
-## Why LLAMusica?  
-
-- **Conversational and Interactive** – Enhances user engagement through dynamic responses.  
-- **Multi-Intent Processing** – Handles complex queries efficiently.  
-- **Real-Time Data Retrieval** – Ensures up-to-date music insights.  
-- **Structured Query Handling** – Supports contextual and personalized queries.  
 
 ---
 
@@ -106,7 +87,7 @@ LLAMusica undergoes structured evaluation, ensuring high accuracy in **intent de
 
 - **NLU Evaluation** – Assesses performance by comparing extracted intents and slots with expected outputs.  
 - **Dialogue Management Validation** – Ensures correct next-best-action selection.  
-- **Similarity Metrics** – Uses similarity measurements to validate response accuracy.  
+- **Similarity Metrics** – Uses similarity measurements to validate response accuracy (in addiction to human quality evaluation).  
 
 **Test Results Summary:**  
 
@@ -117,6 +98,28 @@ LLAMusica undergoes structured evaluation, ensuring high accuracy in **intent de
 | Dialogue Manager       | 45/50               | 90%      |
 
 ---
+
+## Project Structure
+```
+LLAMusica/
+│── assets/                 # Contains images and logos fro the README.md
+│── evaluation/             # Contains test data and evaluation results
+│── prompts/                # Contains system prompts for different components
+│ ├── prompt_COT_detection.txt
+│ ├── prompt_DM.txt
+│ ├── prompt_NLG.txt
+│ ├── prompt_NLU_intents.txt
+│ ├── prompt_COT_detection.txt
+│ ├── prompt_NLU_slots.txt
+│ ├── prompt_USD.txt
+│
+│── eval.py                 # Evaluation script for model performance
+│── main.py                 # Entry point for chatbot execution
+│── model_query.py          # Handles model interaction with LLaMa
+│── spoti.py                # Spotify API handling
+│── statedictmanager.py     # State management for conversation flow
+│── utils.py                # Utility functions
+```
 
 ## Installation and Setup  
 

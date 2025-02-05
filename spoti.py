@@ -13,6 +13,7 @@ from spotipy.oauth2 import SpotifyOAuth
 CLIENT_ID = "<place_your_client_id_here>"
 CLIENT_SECRET = "<place_your_client_secret_here>"
 SPOTIPY_REDIRECT_URI = "<place_your_redirect_uri_here>"
+
 SCOPE = (
     "ugc-image-upload",
     "user-read-playback-state",

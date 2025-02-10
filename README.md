@@ -97,13 +97,17 @@ LLAMusica undergoes structured evaluation, ensuring high accuracy in **intent de
 - **Dialogue Management Validation** – Ensures correct next-best-action selection.  
 - **Similarity Metrics** – Uses similarity measurements to validate response accuracy (in addiction to human quality evaluation).  
 
-**Test Results Summary:**  
+### Test Results Summary
+
+<div align="center">
 
 | Component              | Correct Predictions | Accuracy |
 |------------------------|---------------------|----------|
 | NLU - Intent Extractor | 43/50               | 86%      |
 | NLU - Slots Extractor  | 41/50               | 82%      |
 | Dialogue Manager       | 45/50               | 90%      |
+
+</div>
 
 ---
 

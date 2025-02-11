@@ -18,6 +18,11 @@ You can find the complete video [here](https://youtu.be/YRIkrx3f7iA).
 
 ---
 
+## Objective  
+
+LLAMusica is designed to provide a **seamless and intelligent** music discovery experience by combining the conversational capabilities of **Llama3.2** with the real-time music data from **Spotify APIs**. The system enables users to explore music in a structured, interactive manner, reducing the effort needed to retrieve relevant information.  
+
+---
 
 ## Key Features  
 
@@ -44,12 +49,6 @@ You can find the complete video [here](https://youtu.be/YRIkrx3f7iA).
 
 - **Out-of-Domain Handling**  
   Detects and gracefully handles queries outside the system’s scope.  
-
----
-
-## Objective  
-
-LLAMusica is designed to provide a **seamless and intelligent** music discovery experience by combining the conversational capabilities of **Llama3.2** with the real-time music data from **Spotify APIs**. The system enables users to explore music in a structured, interactive manner, reducing the effort needed to retrieve relevant information.  
 
 ---
 
